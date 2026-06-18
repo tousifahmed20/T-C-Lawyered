@@ -1,0 +1,19 @@
+{
+  "name": "@tc-lawyered/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "T&C Lawyered Chrome extension (Manifest V3).",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "build:dev": "node esbuild.config.mjs --dev",
+    "dev": "node esbuild.config.mjs --watch",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "idb": "^8.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

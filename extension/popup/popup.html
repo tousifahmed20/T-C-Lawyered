@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T&C Lawyered</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">§</span>
+        <div>
+          <h1>T&amp;C Lawyered</h1>
+          <p class="tagline">You clicked agree. We actually read it.</p>
+        </div>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="summary" role="tab">Summary</button>
+      <button class="tab" data-tab="history" role="tab">History</button>
+    </nav>
+
+    <main>
+      <!-- Summary tab -->
+      <section id="tab-summary" class="tabpanel" role="tabpanel">
+        <div class="mini-toolbar">
+          <button id="autoReadBtn" class="link-btn" title="Open every collapsible section and read them all as one policy">
+            ⟳ Auto-read all sections
+          </button>
+        </div>
+        <div id="crawlProgress" class="status hidden"></div>
+        <div id="statusBar" class="status hidden"></div>
+
+        <div id="loading" class="loading hidden">
+          <div class="spinner"></div>
+          <p id="loadingMsg">Reading the fine print…</p>
+        </div>
+
+        <div id="empty" class="empty">
+          <p class="empty-emoji">📄</p>
+          <p>No Terms &amp; Conditions detected on this page yet.</p>
+          <button id="rescanBtn" class="secondary">Scan this page</button>
+        </div>
+
+        <article id="summary" class="summary hidden">
+          <section class="card change-card hidden" id="changeCard">
+            <h2><span class="sev-badge" id="sevBadge"></span> What changed <span id="sevLabel" class="ds-src"></span></h2>
+            <p id="whatChanged"></p>
+            <ul id="changeList"></ul>
+            <p id="changeMeta" class="ds-src"></p>
+          </section>
+
+          <section class="card data-safety hidden" id="dataSafetyCard">
+            <h2>🛡 Data Safety <button class="info-btn" data-help="dataSafety" aria-label="What does Data Safety mean?">ⓘ</button></h2>
+            <p class="card-help hidden" data-help-text="dataSafety"></p>
+
+            <div class="ds-block">
+              <h3>Known breaches <span class="ds-src">· Have I Been Pwned</span></h3>
+              <ul id="breachList"></ul>
+            </div>
+
+            <div class="ds-block">
+              <h3>Reported fines &amp; controversies <span class="ds-src">· AI · unverified</span></h3>
+              <ul id="reportedList"></ul>
+              <button id="checkRepBtn" class="secondary hidden">Check reported violations</button>
+              <p id="repDisclaimer" class="disclaimer hidden">
+                ⚠ AI-generated from public reports — may be incomplete or outdated. Verify independently.
+              </p>
+            </div>
+          </section>
+
+          <section class="card protect-card hidden" id="protectCard">
+            <h2>🔐 Protect Your Data</h2>
+            <ul id="protectTips"></ul>
+            <div class="ds-block" id="videoBlock">
+              <h3>Helpful videos <span class="ds-src" id="videoSrc">· YouTube · recent</span></h3>
+              <div id="videoList"></div>
+              <a id="ytSearchLink" class="ds-link" target="_blank" rel="noopener">More recent videos on YouTube →</a>
+            </div>
+          </section>
+
+          <div class="audio-bar">
+            <button id="playBtn" class="audio-btn" title="Play summary">▶ Listen</button>
+            <button id="pauseBtn" class="audio-btn hidden" title="Pause">⏸ Pause</button>
+            <button id="stopBtn" class="audio-btn hidden" title="Stop">⏹</button>
+            <select id="rateSelect" class="rate" title="Speed">
+              <option value="0.75">0.75×</option>
+              <option value="1" selected>1×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+            </select>
+          </div>
+
+          <section class="card">
+            <h2>TL;DR</h2>
+            <p id="tldr"></p>
+          </section>
+
+          <section class="card">
+            <h2>⚠ Key Risks <button class="info-btn" data-help="keyRisks" aria-label="What does Key Risks mean?">ⓘ</button></h2>
+            <p class="card-help hidden" data-help-text="keyRisks"></p>
+            <ul id="keyRisks"></ul>
+            <p class="card-example hidden" id="example-keyRisks"></p>
+          </section>
+
+          <section class="card">
+            <h2>🗂 Data Collected <button class="info-btn" data-help="dataCollected" aria-label="What does Data Collected mean?">ⓘ</button></h2>
+            <p class="card-help hidden" data-help-text="dataCollected"></p>
+            <ul id="dataCollected"></ul>
+            <p class="card-example hidden" id="example-dataCollected"></p>
+          </section>
+
+          <section class="card">
+            <h2>🤝 Third-Party Sharing <button class="info-btn" data-help="thirdPartySharing" aria-label="What does Third-Party Sharing mean?">ⓘ</button></h2>
+            <p class="card-help hidden" data-help-text="thirdPartySharing"></p>
+            <ul id="thirdPartySharing"></ul>
+            <p class="card-example hidden" id="example-thirdPartySharing"></p>
+          </section>
+
+          <section class="card">
+            <h2>✊ Your Rights <button class="info-btn" data-help="userRights" aria-label="What does Your Rights mean?">ⓘ</button></h2>
+            <p class="card-help hidden" data-help-text="userRights"></p>
+            <ul id="userRights"></ul>
+            <p class="card-example hidden" id="example-userRights"></p>
+          </section>
+
+          <footer class="summary-footer">
+            <span id="genuineNote" class="genuine"></span>
+            <a id="fullPolicyLink" href="#" target="_blank" rel="noopener">Read full policy →</a>
+          </footer>
+        </article>
+
+        <div id="errorBox" class="error-box hidden">
+          <p id="errorMsg"></p>
+          <button id="retryBtn" class="secondary">Try again</button>
+        </div>
+      </section>
+
+      <!-- History tab -->
+      <section id="tab-history" class="tabpanel hidden" role="tabpanel">
+        <ul id="historyList" class="history"></ul>
+        <p id="historyEmpty" class="empty hidden">No history for this site yet.</p>
+      </section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

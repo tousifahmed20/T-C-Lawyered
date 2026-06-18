@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T&C Lawyered — Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1><span class="logo">§</span> T&amp;C Lawyered Settings</h1>
+        <p class="sub">Your API key never leaves this browser except to the provider you choose.</p>
+      </header>
+
+      <!-- Providers -->
+      <section class="panel">
+        <h2>LLM Provider</h2>
+        <p class="hint">Pick one provider to use for summarizing new documents. Keys are encrypted at rest (AES-GCM).</p>
+        <div id="providers"></div>
+      </section>
+
+      <!-- Recent videos -->
+      <section class="panel">
+        <h2>Recent Videos <span style="font-weight: 400; color: var(--muted)">(optional)</span></h2>
+        <p class="hint">
+          Add a YouTube Data API key to list recent short videos about protecting your data on
+          each site. Without it, we still link out to a YouTube search. The key is encrypted at
+          rest and only ever sent to googleapis.com.
+        </p>
+        <label class="row">
+          <span>YouTube Data API key</span>
+          <input type="password" id="youtubeKey" placeholder="API key" autocomplete="off" />
+        </label>
+        <div class="actions">
+          <button id="saveYoutube" class="primary">Save</button>
+          <button id="clearYoutube" class="secondary">Clear</button>
+          <span id="youtubeStatus" class="hint"></span>
+        </div>
+      </section>
+
+      <!-- Audio -->
+      <section class="panel">
+        <h2>Audio</h2>
+        <label class="row">
+          <span>Voice engine</span>
+          <select id="ttsEngine">
+            <option value="browser">Browser voice (free, offline)</option>
+            <option value="openai">OpenAI premium (needs OpenAI key)</option>
+          </select>
+        </label>
+        <label class="row">
+          <span>Default speed</span>
+          <select id="ttsRate">
+            <option value="0.75">0.75×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.25">1.25×</option>
+            <option value="1.5">1.5×</option>
+          </select>
+        </label>
+        <label class="row">
+          <span>Browser voice</span>
+          <select id="ttsVoice"><option value="">System default</option></select>
+        </label>
+      </section>
+
+      <!-- Behaviour -->
+      <section class="panel">
+        <h2>Behaviour</h2>
+        <label class="row toggle">
+          <span>Auto-summarize detected policies</span>
+          <input type="checkbox" id="autoSummarize" />
+        </label>
+        <label class="row toggle">
+          <span>Use the hive (shared summary cache)</span>
+          <input type="checkbox" id="hiveEnabled" />
+        </label>
+      </section>
+
+      <!-- Data -->
+      <section class="panel">
+        <h2>Your Data</h2>
+        <div class="usage">
+          <div class="usage-bar"><div id="usageFill" class="usage-fill"></div></div>
+          <span id="usageText" class="hint">Calculating storage…</span>
+        </div>
+        <div class="actions">
+          <button id="exportBtn" class="secondary">Export all data (JSON)</button>
+          <button id="clearBtn" class="danger">Clear all data</button>
+        </div>
+      </section>
+
+      <p id="toast" class="toast hidden"></p>
+    </div>
+
+    <script type="module" src="settings.js"></script>
+  </body>
+</html>

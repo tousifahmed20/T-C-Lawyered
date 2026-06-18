@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "T&C Lawyered",
+    "description": "The name of the extension."
+  },
+  "appDescription": {
+    "message": "You clicked agree. We actually read it. Auto-summarize and diff Terms & Conditions in plain English.",
+    "description": "The description of the extension."
+  },
+  "summaryTab": {
+    "message": "Summary"
+  },
+  "historyTab": {
+    "message": "History"
+  },
+  "listen": {
+    "message": "Listen"
+  },
+  "readFullPolicy": {
+    "message": "Read full policy"
+  }
+}

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Title matches a policy so the extension also auto-detects it. -->
+    <title>Privacy Policy</title>
+    <style>
+      :root {
+        --bg: #fafafa;
+        --card: #fff;
+        --ink: #262626;
+        --muted: #8e8e8e;
+        --line: #dbdbdb;
+        --accent: #0095f6;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.5;
+      }
+      .page { max-width: 720px; margin: 0 auto; padding: 32px 18px 140px; }
+      h1 { font-size: 28px; margin: 0 0 6px; }
+      .lede { color: var(--muted); margin: 0 0 24px; }
+      .intro {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 22px;
+      }
+      .section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        user-select: none;
+      }
+      .section:hover { border-color: var(--accent); }
+      .section .chev { color: var(--muted); font-weight: 400; }
+
+      /* Modal that a section opens into — mimics Instagram's drawer/popup. */
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 50;
+      }
+      .backdrop.open { display: flex; }
+      .modal {
+        background: var(--card);
+        border-radius: 12px;
+        max-width: 620px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: 22px 24px;
+      }
+      .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .modal-head h2 { font-size: 20px; margin: 0; }
+      .close {
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--muted);
+        padding: 4px 8px;
+      }
+      .modal-body p { margin: 0 0 12px; }
+      .loading { color: var(--muted); font-style: italic; }
+      .sentinel {
+        font-family: monospace;
+        background: #f0f0f0;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      /* Nested collapsed sub-sections inside the modal. */
+      .sub {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin: 8px 0;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        user-select: none;
+      }
+      .sub:hover { border-color: var(--accent); }
+      .sub-panel { font-weight: 400; margin-top: 8px; }
+      a.section { text-decoration: none; color: inherit; }
+
+      /* Live activity log so you can watch the crawler drive the page. */
+      .log {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 120px;
+        overflow-y: auto;
+        background: #111;
+        color: #0f0;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 8px 12px;
+        border-top: 2px solid #0f0;
+      }
+      .log b { color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>Privacy Policy</h1>
+      <p class="lede">Effective date: June 17, 2026 · Test fixture mimicking a lazy-loaded, one-section-at-a-time policy centre.</p>
+
+      <div class="intro">
+        This Privacy Policy explains how Testagram collects, uses, and shares your
+        information. Expand each section below to read the details. (This intro text is
+        present at page load — the section bodies are <strong>not</strong>; they load only
+        after you open each section, and are removed again when you close it.)
+      </div>
+
+      <div id="sections"></div>
+    </div>
+
+    <!-- One shared modal; its body is injected on open and destroyed on close. -->
+    <div class="backdrop" id="backdrop" role="presentation">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head">
+          <h2 id="modalTitle"></h2>
+          <button class="close" id="closeBtn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+
+    <div class="log" id="log"><b>Activity log</b> — watch sections open/close + lazy loads here.</div>
+
+    <script>
+      // 13 sections, each with a UNIQUE sentinel + a distinctive, summary-worthy fact.
+      // If the crawler captures lazy content, these sentinels show up in its capture log.
+      const SECTIONS = [
+        ['The information we collect', 'S01', 'We collect your account details, bank account details, house address, cell phone number, and the content you create, and your device information including a hardware identifier we call the BlueOrchid device fingerprint.'],
+        ['Information from your activity', 'S02', 'We log every tap, scroll, and hover with millisecond timestamps, and we retain a heatmap of where your thumb rests on the screen for 400 days.'],
+        ['Information from partners', 'S03', 'Third parties such as Zorblax Analytics and Mauve Logistics send us your purchase history from other websites you have never visited us from.'],
+        ['How we use your information', 'S04', 'We use your data to train the Testagram Foundational Model, including a behavioural twin that predicts your actions seven days in advance.'],
+        ['How information is shared', 'S05', 'We share aggregated and non-aggregated signals with 1,300 advertising partners, including a company called Quokka Outreach that specialises in political microtargeting.'],
+        ['How long we keep information', 'S06', 'Deleted posts remain in cold storage under the codename Project Driftwood for up to 11 years after you delete your account.'],
+        ['How we transfer information', 'S07', 'Your data is replicated across data centres in 14 countries, including a facility in the fictional jurisdiction of West Bordania that has no privacy law.'],
+        ['Your rights and controls', 'S08', 'You may request deletion, but our Magenta Retention Clause lets us keep a derived profile that we claim is no longer personal data.'],
+        ['How we use cookies', 'S09', 'We set a persistent supercookie named GreyHeron that respawns from your browser cache even after you clear cookies.'],
+        ['Children and teens', 'S10', 'We infer the age of users from selfie analysis using a model called LittleSparrow and adjust ad categories accordingly.'],
+        ['How we secure your data', 'S11', 'We encrypt data in transit, though our internal tool CrimsonKey allows 9,000 employees to view raw messages for debugging.'],
+        ['Law and policy changes', 'S12', 'We may change this policy at any time, and continued use after a change in the SilentAmber update constitutes acceptance.'],
+        ['How to contact us', 'S13', 'For privacy questions, contact our Data Protection Officer via the EmeraldDesk portal; responses may take up to 95 business days.'],
+      ];
+
+      const sectionsEl = document.getElementById('sections');
+      const backdrop = document.getElementById('backdrop');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+      const closeBtn = document.getElementById('closeBtn');
+      const logEl = document.getElementById('log');
+
+      let lazyTimer = null;
+      let openIndex = -1;
+
+      function log(msg) {
+        const line = document.createElement('div');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      // Build the rows. To stress-test the crawler we deliberately mix two
+      // markups: even rows are <div role="button"> (Instagram-ish), ODD rows are
+      // <a href> ANCHORS — exactly the "anchor-tagged" case you flagged. The
+      // crawler's nav-guard must click these without navigating away.
+      SECTIONS.forEach(([title], i) => {
+        const isAnchor = i % 2 === 1;
+        const row = document.createElement(isAnchor ? 'a' : 'div');
+        row.className = 'section';
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-expanded', 'false');
+        row.setAttribute('aria-controls', 'modalBody');
+        if (isAnchor) row.setAttribute('href', `/policy/section-${i + 1}`); // would navigate if not guarded
+        row.dataset.index = String(i);
+        const tag = isAnchor ? ' (anchor)' : '';
+        row.innerHTML = `<span>${title}${tag}</span><span class="chev">▸</span>`;
+        row.addEventListener('click', () => openSection(i));
+        sectionsEl.appendChild(row);
+      });
+
+      function destroyBody() {
+        // DESTROY-ON-CLOSE: lazy content is removed from the DOM entirely.
+        clearTimeout(lazyTimer);
+        modalBody.innerHTML = '';
+      }
+
+      function closeModal() {
+        if (openIndex === -1) return;
+        const row = sectionsEl.querySelector(`[data-index="${openIndex}"]`);
+        if (row) row.setAttribute('aria-expanded', 'false');
+        log(`closed §${openIndex + 1} (content destroyed)`);
+        destroyBody();
+        backdrop.classList.remove('open');
+        openIndex = -1;
+      }
+
+      // A nested, collapsed sub-section housed UNDER the section — its sentinel
+      // is hidden until its own toggle is clicked (and lazy-loads). This is the
+      // "closed sentinels housed under each section" case you were worried about.
+      function wireSubSections(i, sentinel) {
+        modalBody.querySelectorAll('.sub').forEach((sub) => {
+          sub.addEventListener('click', () => {
+            const panel = sub.querySelector('.sub-panel');
+            if (panel.dataset.loaded) return;
+            const sub_id = sub.dataset.sub;
+            panel.textContent = 'Loading…';
+            setTimeout(() => {
+              panel.dataset.loaded = '1';
+              panel.innerHTML =
+                `<span class="sentinel">[[CAPTURED-${sentinel}-${sub_id}]]</span> ` +
+                `Nested detail ${sub_id} for this section: we additionally process ` +
+                `sub-category ${sub_id} data under a separate internal program.`;
+              log(`  └ sub-section ${sentinel}-${sub_id} lazy-loaded`);
+            }, 250);
+          });
+        });
+      }
+
+      function openSection(i) {
+        if (openIndex !== -1) closeModal(); // one-at-a-time
+        openIndex = i;
+        const [title, sentinel, fact] = SECTIONS[i];
+        const row = sectionsEl.querySelector(`[data-index="${i}"]`);
+        if (row) row.setAttribute('aria-expanded', 'true');
+        modalTitle.textContent = title;
+        modalBody.innerHTML = '<p class="loading">Loading…</p>';
+        backdrop.classList.add('open');
+        log(`opened §${i + 1} — fetching lazy content…`);
+
+        // LAZY LOAD: real body appears ~350ms after open (simulated network),
+        // and contains two further collapsed, lazy sub-sections.
+        lazyTimer = setTimeout(() => {
+          modalBody.innerHTML = `
+            <p><span class="sentinel">[[CAPTURED-${sentinel}]]</span></p>
+            <p>${fact}</p>
+            <div class="sub" role="button" tabindex="0" aria-expanded="false" aria-controls="sub-${sentinel}-A" data-sub="A">
+              Show nested detail A <div class="sub-panel" id="sub-${sentinel}-A"></div>
+            </div>
+            <div class="sub" role="button" tabindex="0" aria-expanded="false" aria-controls="sub-${sentinel}-B" data-sub="B">
+              Show nested detail B <div class="sub-panel" id="sub-${sentinel}-B"></div>
+            </div>`;
+          log(`§${i + 1} lazy content loaded (sentinel ${sentinel}; 2 nested subs)`);
+          wireSubSections(i, sentinel);
+        }, 350);
+      }
+
+      closeBtn.addEventListener('click', closeModal);
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+    </script>
+  </body>
+</html>

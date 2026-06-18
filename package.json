@@ -1,0 +1,22 @@
+{
+  "name": "tc-lawyered",
+  "version": "0.1.0",
+  "private": true,
+  "description": "You clicked agree. We actually read it. Auto-summarize and diff Terms & Conditions, locally and privately.",
+  "license": "MIT",
+  "workspaces": [
+    "extension",
+    "backend",
+    "scripts"
+  ],
+  "scripts": {
+    "build:extension": "npm run build --workspace extension",
+    "dev:extension": "npm run dev --workspace extension",
+    "lint": "eslint . --ext .js,.mjs",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3"
+  }
+}

@@ -13,7 +13,14 @@
 import { MSG, POLICY_TYPES, SEVERITY, SEVERITY_COLORS } from '../utils/CONSTANTS.js';
 import { createLogger } from '../utils/logger.js';
 import { normalizeDomain } from '../utils/domain.js';
-import { getActiveLLMConfig, getLLMConfig, getPrefs, getYoutubeKey } from '../utils/config.js';
+import {
+  getActiveLLMConfig,
+  getLLMConfig,
+  getPrefs,
+  getYoutubeKey,
+  getLanguage,
+  languageName,
+} from '../utils/config.js';
 import { computeHash } from './hasher.js';
 import { lookupPolicy, uploadPolicy } from './hive.js';
 import { validateAuthenticity, passesUploadGate } from './validator.js';
@@ -106,15 +113,24 @@ async function onPolicyDetected(payload, sender) {
 
   const domain = normalizeDomain(hostname);
   const hash = await computeHash(text);
+  const langCode = await getLanguage();
+  const lang = languageName(langCode);
   const meta = { domain, policyType, hash, url };
   setTab(tabId, { status: 'working', meta });
 
   try {
-    // 1) Already have it locally? Render instantly.
+    // 1) Already have it locally in the right language? Render instantly.
     const existing = await getSnapshot(hash);
-    if (existing?.summary && !payload.force) {
+    if (existing?.summary && existing.language === langCode && !payload.force) {
       log.debug('local cache hit');
-      await finalize(tabId, { domain, policyType, hash, summary: existing.summary, meta });
+      await finalize(tabId, {
+        domain,
+        policyType,
+        hash,
+        summary: existing.summary,
+        meta,
+        scannedAt: existing.ts,
+      });
       return { ok: true, status: 'ready', cached: 'local' };
     }
 
@@ -123,8 +139,15 @@ async function onPolicyDetected(payload, sender) {
       const hit = await lookupPolicy(hash, domain);
       if (hit.found && hit.summary) {
         log.debug('hive hit');
-        await putSnapshot({ hash, domain, policyType, rawText: text, summary: hit.summary });
-        await finalize(tabId, { domain, policyType, hash, summary: hit.summary, meta });
+        await putSnapshot({ hash, domain, policyType, rawText: text, summary: hit.summary, language: langCode });
+        await finalize(tabId, {
+          domain,
+          policyType,
+          hash,
+          summary: hit.summary,
+          meta,
+          scannedAt: Date.now(),
+        });
         return { ok: true, status: 'ready', cached: 'hive' };
       }
     }
@@ -141,8 +164,8 @@ async function onPolicyDetected(payload, sender) {
     // 4) Authenticity validation (gates hive upload, not local summarize).
     const genuineCheck = await validateAuthenticity({ url, text, llmConfig });
 
-    // 5) Summarize.
-    const { summary } = await summarizeDocument({ text, domain, policyType, llmConfig });
+    // 5) Summarize (in the user's chosen language).
+    const { summary } = await summarizeDocument({ text, domain, policyType, llmConfig, lang });
 
     // 6) Diff against the latest prior version, if any.
     let whatChanged = null;
@@ -158,6 +181,7 @@ async function onPolicyDetected(payload, sender) {
           domain,
           policyType,
           llmConfig,
+          lang,
         });
         whatChanged = diff.whatChanged;
         changeList = diff.changes;
@@ -189,6 +213,7 @@ async function onPolicyDetected(payload, sender) {
       rawText: text,
       summary: fullSummary,
       parentHash: prior?.hash || null,
+      language: langCode,
     });
     await putSite({ domain, policyType, hash });
 
@@ -196,11 +221,18 @@ async function onPolicyDetected(payload, sender) {
     //    the reported track record now (cached per domain). Never done on hive/
     //    cache hits — that would break the zero-cost guarantee.
     if (!(await getCachedReportedActions(domain))) {
-      await generateReportedActions({ domain, llmConfig }).catch(() => {});
+      await generateReportedActions({ domain, llmConfig, lang }).catch(() => {});
     }
 
     // 9) Render now, then upload to hive in the background (gated).
-    await finalize(tabId, { domain, policyType, hash, summary: fullSummary, meta });
+    await finalize(tabId, {
+      domain,
+      policyType,
+      hash,
+      summary: fullSummary,
+      meta,
+      scannedAt: Date.now(),
+    });
 
     if (prefs.hiveEnabled && passesUploadGate(genuineCheck)) {
       // Fire-and-forget — never blocks, never throws upward.
@@ -229,7 +261,7 @@ async function onPolicyDetected(payload, sender) {
  * Build the full "ready" tab state (summary + data safety + protection) and
  * cache it. Does NOT notify the popup — callers decide whether to.
  */
-async function buildReadyState(tabId, { domain, policyType, hash, summary, meta }) {
+async function buildReadyState(tabId, { domain, policyType, hash, summary, meta, scannedAt }) {
   const company = domain.replace(/\.[a-z.]+$/i, '');
   const ytKey = await getYoutubeKey();
   // Anchor video recency to the last policy change, else the last ~2 years.
@@ -261,7 +293,7 @@ async function buildReadyState(tabId, { domain, policyType, hash, summary, meta 
       searchUrl: buildYoutubeSearchUrl(company),
       sinceYear: new Date(sinceMs).getFullYear(),
     },
-    meta: { ...meta, domain, policyType, hash },
+    meta: { ...meta, domain, policyType, hash, scannedAt: scannedAt ?? Date.now() },
   };
   setTab(tabId, state);
   return state;
@@ -297,7 +329,8 @@ async function checkReputation(domain, tabId) {
   if (!llmConfig) {
     return { ok: false, error: 'NO_PROVIDER: Add an LLM API key in settings to check this.' };
   }
-  const reportedActions = await generateReportedActions({ domain, llmConfig });
+  const lang = languageName(await getLanguage());
+  const reportedActions = await generateReportedActions({ domain, llmConfig, lang });
   const state = tabState.get(tabId);
   if (state?.dataSafety) {
     state.dataSafety.reportedActions = reportedActions;
@@ -362,6 +395,7 @@ async function rebuildFromStorage(tabId) {
       hash: latest.hash,
       summary: latest.summary,
       meta: { url: tab.url },
+      scannedAt: latest.ts,
     });
   } catch (error) {
     log.warn('rebuildFromStorage failed:', error.message);
@@ -385,6 +419,3 @@ async function testProvider(provider) {
     return { ok: false, error: error.message };
   }
 }
-
-// Keep references used only for typing/imports from being tree-shaken in dev.
-export { POLICY_TYPES };

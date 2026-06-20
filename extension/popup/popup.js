@@ -4,10 +4,11 @@
  * (F-10), and powers the History tab. No business logic lives here — the SW
  * owns the pipeline; the popup is a thin view.
  */
-import { MSG, SEVERITY, GLOSSARY } from '../utils/CONSTANTS.js';
+import { MSG, SEVERITY, GLOSSARY, SUPPORTED_LANGUAGES, RTL_LANGUAGES } from '../utils/CONSTANTS.js';
 import { createLogger } from '../utils/logger.js';
 import { normalizeDomain } from '../utils/domain.js';
-import { getPrefs, getLLMConfig } from '../utils/config.js';
+import { getPrefs, getLLMConfig, getLanguage, saveLanguage } from '../utils/config.js';
+import { getMessages, t } from '../utils/i18n.js';
 import {
   buildScript,
   speakBrowser,
@@ -26,6 +27,7 @@ let currentSummary = null;
 let currentMeta = null;
 let currentDataSafety = null;
 let currentProtection = null;
+let currentLang = 'en';
 let audioEl = null;
 
 document.addEventListener('DOMContentLoaded', init);
@@ -34,6 +36,7 @@ async function init() {
   wireTabs();
   wireButtons();
   wireHelp();
+  await setupLanguage();
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeTabId = tab?.id ?? null;
   activeTabUrl = tab?.url ?? null;
@@ -52,9 +55,30 @@ async function init() {
   });
 }
 
+/**
+ * Send a message to the service worker without ever throwing. MV3 workers are
+ * ephemeral and may be briefly absent ("Receiving end does not exist") — we
+ * retry once and return null on failure so the popup degrades gracefully.
+ */
+async function sendToSW(message, retries = 1) {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch (error) {
+      if (attempt === retries) {
+        log.warn('service worker unreachable:', error.message);
+        return null;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+  return null;
+}
+
 async function loadState() {
-  const res = await chrome.runtime.sendMessage({ type: MSG.GET_SUMMARY, tabId: activeTabId });
-  if (!res?.ok) return showEmpty();
+  const res = await sendToSW({ type: MSG.GET_SUMMARY, tabId: activeTabId });
+  if (!res) return showError('Extension is starting up — reopen the popup in a moment.');
+  if (!res.ok) return showEmpty();
 
   currentMeta = res.meta || null;
   currentDataSafety = res.dataSafety || null;
@@ -98,6 +122,8 @@ function renderSummary(summary, meta) {
   $('crawlProgress').classList.add('hidden');
   $('autoReadBtn').disabled = false;
   show('summary');
+
+  renderScannedAt(meta);
 
   $('tldr').textContent = summary.tldr || '—';
   fillList('keyRisks', summary.keyRisks);
@@ -274,6 +300,18 @@ function escapeHtml(str) {
   );
 }
 
+/** Show "Scanned: <date>" at the top so the user knows how fresh the data is. */
+function renderScannedAt(meta) {
+  const el = $('scannedAt');
+  const ts = meta?.scannedAt ?? currentMeta?.scannedAt;
+  if (ts) {
+    el.textContent = `${t(currentLang, 'scannedOn')}: ${new Date(ts).toLocaleString()}`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
 /** Render the richer Data Collected list: bold label + explanation per item. */
 function fillDataCollected(items) {
   const ul = $('dataCollected');
@@ -297,7 +335,7 @@ function fillExample(section, text) {
   const el = $(`example-${section}`);
   if (!el) return;
   if (text && text.trim()) {
-    el.innerHTML = `<span class="ex-label">For example:</span> ${escapeHtml(text)}`;
+    el.innerHTML = `<span class="ex-label">${escapeHtml(t(currentLang, 'forExample'))}</span> ${escapeHtml(text)}`;
     el.classList.remove('hidden');
   } else {
     el.classList.add('hidden');
@@ -360,6 +398,37 @@ function humanizeError(message = '') {
 
 /* ------------------------------ tabs ----------------------------- */
 
+/* ------------------------------ language ------------------------- */
+
+async function setupLanguage() {
+  currentLang = await getLanguage();
+  const sel = $('langSelect');
+  sel.innerHTML = SUPPORTED_LANGUAGES.map(
+    (l) => `<option value="${l.code}">${l.native}</option>`,
+  ).join('');
+  sel.value = currentLang;
+  applyI18n(currentLang);
+  sel.addEventListener('change', onLangChange);
+}
+
+/** Translate all static [data-i18n] chrome + set text direction. */
+function applyI18n(lang) {
+  const msgs = getMessages(lang);
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    const key = el.dataset.i18n;
+    if (msgs[key] != null) el.textContent = msgs[key];
+  }
+  document.body.dir = RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr';
+}
+
+async function onLangChange(e) {
+  currentLang = e.target.value;
+  await saveLanguage(currentLang);
+  applyI18n(currentLang);
+  // Re-summarize the page content in the new language (chrome is already done).
+  if (currentSummary) rescan();
+}
+
 /** Fill each card's help text from the glossary and toggle it on the ⓘ button. */
 function wireHelp() {
   for (const el of document.querySelectorAll('[data-help-text]')) {
@@ -396,7 +465,7 @@ async function loadHistory() {
     $('historyEmpty').classList.remove('hidden');
     return;
   }
-  const res = await chrome.runtime.sendMessage({
+  const res = await sendToSW({
     type: MSG.GET_HISTORY,
     domain,
     policyType: currentMeta?.policyType, // omitted → both types
@@ -413,7 +482,7 @@ async function loadHistory() {
     li.appendChild(p);
     li.addEventListener('click', () => {
       currentSummary = v.summary;
-      renderSummary(v.summary, { url: v.url });
+      renderSummary(v.summary, { url: v.url, scannedAt: v.ts });
       switchTab('summary');
     });
     listEl.appendChild(li);
@@ -474,7 +543,7 @@ async function checkReputation() {
   const btn = $('checkRepBtn');
   btn.disabled = true;
   btn.textContent = 'Checking…';
-  const res = await chrome.runtime.sendMessage({
+  const res = await sendToSW({
     type: MSG.CHECK_REPUTATION,
     domain: currentDataSafety.domain,
     tabId: activeTabId,

@@ -51,11 +51,11 @@ export function splitIntoChunks(text) {
  * @param {object} args.llmConfig - { provider, model, apiKey }
  * @returns {Promise<{ summary: object, tokensUsed: number }>}
  */
-export async function summarizeDocument({ text, domain, policyType, llmConfig }) {
+export async function summarizeDocument({ text, domain, policyType, llmConfig, lang }) {
   const tokens = estimateTokens(text);
   if (tokens <= TOKENS.SINGLE_CALL_MAX) {
     log.debug(`single-call path (${tokens} tokens)`);
-    const { system, user } = singleSummaryPrompt(text, domain, policyType);
+    const { system, user } = singleSummaryPrompt(text, domain, policyType, lang);
     const { json, tokensUsed } = await callLLMJson({
       systemPrompt: system,
       userPrompt: user,
@@ -79,7 +79,7 @@ export async function summarizeDocument({ text, domain, policyType, llmConfig })
     sections.push({ summary: json.summary || '', points: json.points || [] });
   }
 
-  const { system, user } = metaSummaryPrompt(sections, domain, policyType);
+  const { system, user } = metaSummaryPrompt(sections, domain, policyType, lang);
   const { json, tokensUsed: metaUsed } = await callLLMJson({
     systemPrompt: system,
     userPrompt: user,

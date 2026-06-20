@@ -4,7 +4,7 @@
  * only ever decrypted transiently inside the service worker right before a call
  * and is never written back out, logged, or sent anywhere but the provider.
  */
-import { PROVIDER_MODELS } from './CONSTANTS.js';
+import { PROVIDER_MODELS, SUPPORTED_LANGUAGES } from './CONSTANTS.js';
 import { encrypt, decrypt } from './crypto.js';
 import { createLogger } from './logger.js';
 
@@ -20,7 +20,10 @@ const DEFAULT_PREFS = {
   ttsVoice: null,
   autoSummarize: true,
   hiveEnabled: true,
+  language: null, // null = auto-detect from browser locale
 };
+
+const SUPPORTED_CODES = SUPPORTED_LANGUAGES.map((l) => l.code);
 
 /**
  * Persist a provider's settings, encrypting the API key.
@@ -122,6 +125,30 @@ export async function savePrefs(partial) {
   const next = { ...current, ...partial };
   await chrome.storage.local.set({ [PREFS_KEY]: next });
   return next;
+}
+
+/**
+ * The effective summary language code. Uses the saved preference, else the
+ * browser UI locale (privacy-safe — no IP lookup), falling back to English.
+ * @returns {Promise<string>} a SUPPORTED_LANGUAGES code
+ */
+export async function getLanguage() {
+  const prefs = await getPrefs();
+  if (prefs.language && SUPPORTED_CODES.includes(prefs.language)) return prefs.language;
+  const ui = (chrome.i18n?.getUILanguage?.() || 'en').toLowerCase();
+  const primary = ui.split('-')[0];
+  return SUPPORTED_CODES.includes(primary) ? primary : 'en';
+}
+
+/** Persist the chosen language ('auto' or empty clears it back to auto-detect). */
+export async function saveLanguage(code) {
+  const value = code && SUPPORTED_CODES.includes(code) ? code : null;
+  await savePrefs({ language: value });
+}
+
+/** English name of a language code, for the LLM prompt. */
+export function languageName(code) {
+  return SUPPORTED_LANGUAGES.find((l) => l.code === code)?.name || 'English';
 }
 
 async function readProvidersRaw() {

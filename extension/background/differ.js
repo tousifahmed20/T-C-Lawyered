@@ -25,12 +25,13 @@ const MAX_SIDE_CHARS = TOKENS.SINGLE_CALL_MAX * TOKENS.CHARS_PER_TOKEN * 0.5;
  * @param {object} args.llmConfig
  * @returns {Promise<{ whatChanged: string|null, changes: string[], changesSeverity: string, tokensUsed: number }>}
  */
-export async function diffVersions({ oldText, newText, domain, policyType, llmConfig }) {
+export async function diffVersions({ oldText, newText, domain, policyType, llmConfig, lang }) {
   const { system, user } = diffPrompt(
     oldText.slice(0, MAX_SIDE_CHARS),
     newText.slice(0, MAX_SIDE_CHARS),
     domain,
     policyType,
+    lang,
   );
   try {
     const { json, tokensUsed } = await callLLMJson({

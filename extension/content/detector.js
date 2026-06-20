@@ -112,6 +112,17 @@ function inferTypeFromText(text) {
 }
 
 /**
+ * True only while this content script's extension context is still valid.
+ * When the extension is reloaded/updated/disabled, Chrome tears down
+ * `chrome.runtime` in tabs that were already open — so an orphaned copy of this
+ * script would throw on `chrome.runtime.sendMessage`. Checking `runtime.id`
+ * lets us detect that and stop quietly instead.
+ */
+function extensionAlive() {
+  return Boolean(chrome?.runtime?.id);
+}
+
+/**
  * Extract and report a confirmed policy to the service worker.
  * @param {{ type: string, root?: Element }} match
  */
@@ -120,23 +131,38 @@ function reportDetection(match) {
   // extraction never disagree about which text we're summarizing.
   const text = extractPolicyText(match.root);
   if (wordCount(text) < 150) return; // too short to be a real policy
+
+  // Bail if the extension was reloaded while this tab stayed open — touching a
+  // torn-down chrome.runtime here is what throws "Cannot read properties of
+  // undefined (reading 'sendMessage')".
+  if (!extensionAlive()) {
+    observer.disconnect();
+    return;
+  }
+
   detected = true;
   observer.disconnect();
 
-  chrome.runtime
-    .sendMessage({
-      type: MSG.POLICY_DETECTED,
-      payload: {
-        url: window.location.href,
-        hostname: window.location.hostname,
-        policyType: match.type,
-        text,
-      },
-    })
-    .catch(() => {
-      // SW may be asleep/restarting; a later mutation will retry if needed.
-      detected = false;
-    });
+  try {
+    chrome.runtime
+      .sendMessage({
+        type: MSG.POLICY_DETECTED,
+        payload: {
+          url: window.location.href,
+          hostname: window.location.hostname,
+          policyType: match.type,
+          text,
+        },
+      })
+      .catch(() => {
+        // SW may be asleep/restarting; a later mutation will retry if needed.
+        detected = false;
+      });
+  } catch {
+    // Context invalidated between the check and the call — give up silently.
+    detected = false;
+    observer.disconnect();
+  }
 }
 
 function runDetection() {
@@ -147,6 +173,12 @@ function runDetection() {
 
 function scheduleDetection() {
   if (detected) return;
+  // An orphaned script (extension reloaded, tab left open) should stop watching
+  // rather than fire detections against a dead runtime.
+  if (!extensionAlive()) {
+    observer.disconnect();
+    return;
+  }
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(runDetection, 400);
 }

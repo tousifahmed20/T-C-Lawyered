@@ -35,6 +35,43 @@ export const TRACK_RECORD_TTL_MS = 30 * 24 * 60 * 60 * 1000; // AI track record:
 /** Only show AI-reported actions at or above this confidence. */
 export const TRACK_RECORD_MIN_CONFIDENCE = 70;
 
+/**
+ * Display order for providers in settings. OpenRouter is first and flagged as
+ * the recommended default: one key unlocks many models (including free ones)
+ * behind a single OpenAI-compatible API — the friendliest on-ramp for users who
+ * don't already have a provider account.
+ */
+export const PROVIDER_ORDER = ['openrouter', 'anthropic', 'openai', 'gemini'];
+export const RECOMMENDED_PROVIDER = 'openrouter';
+
+/** Friendly display names for providers in the UI. */
+export const PROVIDER_LABELS = {
+  openrouter: 'OpenRouter',
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  gemini: 'Google Gemini',
+};
+
+/**
+ * Direct links to each provider's API-key page (deep-link key helper). Opening
+ * these lets a user create + copy a key in one click instead of hunting docs.
+ * We never receive the key — it's pasted locally and encrypted at rest.
+ */
+export const PROVIDER_KEY_URLS = {
+  openrouter: 'https://openrouter.ai/keys',
+  anthropic: 'https://console.anthropic.com/settings/keys',
+  openai: 'https://platform.openai.com/api-keys',
+  gemini: 'https://aistudio.google.com/apikey',
+};
+
+/**
+ * Document types the authenticity check can return. Only genuine LEGAL types are
+ * eligible for hive upload — `not_legal` is summarized locally for the user but
+ * never shared, keeping the public cache free of non-policy noise.
+ */
+export const DOC_TYPES = ['privacy', 'terms', 'other_legal', 'not_legal'];
+export const UPLOADABLE_DOC_TYPES = ['privacy', 'terms', 'other_legal'];
+
 /** Supported providers and their selectable models. */
 export const PROVIDER_MODELS = {
   anthropic: ['claude-haiku-4-5', 'claude-sonnet-4-6'],
@@ -51,6 +88,34 @@ export const PROVIDER_MODELS = {
     'openai/gpt-4o-mini',
   ],
 };
+
+/**
+ * Languages the summary can be produced in. `name` is the English name passed to
+ * the LLM ("write in Spanish"); `native` is shown in the selector. The default is
+ * resolved from the browser locale (chrome.i18n.getUILanguage) — never the IP.
+ */
+export const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', native: 'English' },
+  { code: 'es', name: 'Spanish', native: 'Español' },
+  { code: 'fr', name: 'French', native: 'Français' },
+  { code: 'de', name: 'German', native: 'Deutsch' },
+  { code: 'pt', name: 'Portuguese', native: 'Português' },
+  { code: 'it', name: 'Italian', native: 'Italiano' },
+  { code: 'nl', name: 'Dutch', native: 'Nederlands' },
+  { code: 'ru', name: 'Russian', native: 'Русский' },
+  { code: 'tr', name: 'Turkish', native: 'Türkçe' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা' },
+  { code: 'ar', name: 'Arabic', native: 'العربية' },
+  { code: 'zh', name: 'Chinese (Simplified)', native: '中文' },
+  { code: 'ja', name: 'Japanese', native: '日本語' },
+  { code: 'ko', name: 'Korean', native: '한국어' },
+  { code: 'id', name: 'Indonesian', native: 'Bahasa Indonesia' },
+  { code: 'vi', name: 'Vietnamese', native: 'Tiếng Việt' },
+];
+
+/** Right-to-left languages (popup sets dir=rtl for these). */
+export const RTL_LANGUAGES = ['ar'];
 
 /** Policy types we recognise. */
 export const POLICY_TYPES = {

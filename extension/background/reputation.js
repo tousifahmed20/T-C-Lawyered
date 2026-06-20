@@ -30,8 +30,8 @@ export async function getCachedReportedActions(domain) {
  * @param {object} args - { domain, llmConfig }
  * @returns {Promise<Array<{year, type, summary, confidence}>>}
  */
-export async function generateReportedActions({ domain, llmConfig }) {
-  const { system, user } = trackRecordPrompt(domain);
+export async function generateReportedActions({ domain, llmConfig, lang }) {
+  const { system, user } = trackRecordPrompt(domain, lang);
   try {
     const { json } = await callLLMJson({ systemPrompt: system, userPrompt: user, ...llmConfig });
     const actions = (Array.isArray(json.actions) ? json.actions : [])

@@ -13,10 +13,27 @@
         <p class="sub">Your API key never leaves this browser except to the provider you choose.</p>
       </header>
 
+      <!-- Language -->
+      <section class="panel">
+        <h2>Language</h2>
+        <p class="hint">
+          Summaries are written in this language. The default is auto-detected from your
+          browser — your IP is never used. Changing this re-summarizes on your next scan.
+        </p>
+        <label class="row">
+          <span>Summary language</span>
+          <select id="langSelect"></select>
+        </label>
+      </section>
+
       <!-- Providers -->
       <section class="panel">
         <h2>LLM Provider</h2>
-        <p class="hint">Pick one provider to use for summarizing new documents. Keys are encrypted at rest (AES-GCM).</p>
+        <p class="hint">
+          Pick one provider to summarize new documents. New here? <strong>OpenRouter</strong> is the
+          easiest — one key unlocks many models, including free ones. Keys are encrypted at rest
+          (AES-GCM) and only ever sent to the provider you choose.
+        </p>
         <div id="providers"></div>
       </section>
 

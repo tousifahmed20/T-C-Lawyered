@@ -12,15 +12,18 @@
         <span class="logo">§</span>
         <div>
           <h1>T&amp;C Lawyered</h1>
-          <p class="tagline">You clicked agree. We actually read it.</p>
+          <p class="tagline" data-i18n="tagline">You clicked agree. We actually read it.</p>
         </div>
       </div>
-      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      <div class="topbar-actions">
+        <select id="langSelect" class="lang-select" title="Summary language" aria-label="Summary language"></select>
+        <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      </div>
     </header>
 
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="summary" role="tab">Summary</button>
-      <button class="tab" data-tab="history" role="tab">History</button>
+      <button class="tab active" data-tab="summary" role="tab" data-i18n="tabSummary">Summary</button>
+      <button class="tab" data-tab="history" role="tab" data-i18n="tabHistory">History</button>
     </nav>
 
     <main>
@@ -28,7 +31,7 @@
       <section id="tab-summary" class="tabpanel" role="tabpanel">
         <div class="mini-toolbar">
           <button id="autoReadBtn" class="link-btn" title="Open every collapsible section and read them all as one policy">
-            ⟳ Auto-read all sections
+            ⟳ <span data-i18n="autoRead">Auto-read all sections</span>
           </button>
         </div>
         <div id="crawlProgress" class="status hidden"></div>
@@ -36,55 +39,28 @@
 
         <div id="loading" class="loading hidden">
           <div class="spinner"></div>
-          <p id="loadingMsg">Reading the fine print…</p>
+          <p id="loadingMsg" data-i18n="loadingMsg">Reading the fine print…</p>
         </div>
 
         <div id="empty" class="empty">
           <p class="empty-emoji">📄</p>
-          <p>No Terms &amp; Conditions detected on this page yet.</p>
-          <button id="rescanBtn" class="secondary">Scan this page</button>
+          <p data-i18n="noPolicy">No Terms &amp; Conditions detected on this page yet.</p>
+          <button id="rescanBtn" class="secondary" data-i18n="scanThisPage">Scan this page</button>
         </div>
 
         <article id="summary" class="summary hidden">
+          <p id="scannedAt" class="scanned-line hidden"></p>
+
           <section class="card change-card hidden" id="changeCard">
-            <h2><span class="sev-badge" id="sevBadge"></span> What changed <span id="sevLabel" class="ds-src"></span></h2>
+            <h2><span class="sev-badge" id="sevBadge"></span> <span data-i18n="whatChanged">What changed</span> <span id="sevLabel" class="ds-src"></span></h2>
             <p id="whatChanged"></p>
             <ul id="changeList"></ul>
             <p id="changeMeta" class="ds-src"></p>
           </section>
 
-          <section class="card data-safety hidden" id="dataSafetyCard">
-            <h2>🛡 Data Safety <button class="info-btn" data-help="dataSafety" aria-label="What does Data Safety mean?">ⓘ</button></h2>
-            <p class="card-help hidden" data-help-text="dataSafety"></p>
-
-            <div class="ds-block">
-              <h3>Known breaches <span class="ds-src">· Have I Been Pwned</span></h3>
-              <ul id="breachList"></ul>
-            </div>
-
-            <div class="ds-block">
-              <h3>Reported fines &amp; controversies <span class="ds-src">· AI · unverified</span></h3>
-              <ul id="reportedList"></ul>
-              <button id="checkRepBtn" class="secondary hidden">Check reported violations</button>
-              <p id="repDisclaimer" class="disclaimer hidden">
-                ⚠ AI-generated from public reports — may be incomplete or outdated. Verify independently.
-              </p>
-            </div>
-          </section>
-
-          <section class="card protect-card hidden" id="protectCard">
-            <h2>🔐 Protect Your Data</h2>
-            <ul id="protectTips"></ul>
-            <div class="ds-block" id="videoBlock">
-              <h3>Helpful videos <span class="ds-src" id="videoSrc">· YouTube · recent</span></h3>
-              <div id="videoList"></div>
-              <a id="ytSearchLink" class="ds-link" target="_blank" rel="noopener">More recent videos on YouTube →</a>
-            </div>
-          </section>
-
           <div class="audio-bar">
-            <button id="playBtn" class="audio-btn" title="Play summary">▶ Listen</button>
-            <button id="pauseBtn" class="audio-btn hidden" title="Pause">⏸ Pause</button>
+            <button id="playBtn" class="audio-btn" title="Play summary">▶ <span data-i18n="listen">Listen</span></button>
+            <button id="pauseBtn" class="audio-btn hidden" title="Pause">⏸ <span data-i18n="pause">Pause</span></button>
             <button id="stopBtn" class="audio-btn hidden" title="Stop">⏹</button>
             <select id="rateSelect" class="rate" title="Speed">
               <option value="0.75">0.75×</option>
@@ -100,42 +76,71 @@
           </section>
 
           <section class="card">
-            <h2>⚠ Key Risks <button class="info-btn" data-help="keyRisks" aria-label="What does Key Risks mean?">ⓘ</button></h2>
+            <h2>⚠ <span data-i18n="keyRisks">Key Risks</span> <button class="info-btn" data-help="keyRisks" aria-label="What does Key Risks mean?">ⓘ</button></h2>
             <p class="card-help hidden" data-help-text="keyRisks"></p>
             <ul id="keyRisks"></ul>
             <p class="card-example hidden" id="example-keyRisks"></p>
           </section>
 
+          <section class="card data-safety hidden" id="dataSafetyCard">
+            <h2>🛡 <span data-i18n="dataSafety">Data Safety</span> <button class="info-btn" data-help="dataSafety" aria-label="What does Data Safety mean?">ⓘ</button></h2>
+            <p class="card-help hidden" data-help-text="dataSafety"></p>
+
+            <div class="ds-block">
+              <h3><span data-i18n="knownBreaches">Known breaches</span> <span class="ds-src">· Have I Been Pwned</span></h3>
+              <ul id="breachList"></ul>
+            </div>
+
+            <div class="ds-block">
+              <h3><span data-i18n="reportedFines">Reported fines &amp; controversies</span> <span class="ds-src">· AI · unverified</span></h3>
+              <ul id="reportedList"></ul>
+              <button id="checkRepBtn" class="secondary hidden" data-i18n="checkReported">Check reported violations</button>
+              <p id="repDisclaimer" class="disclaimer hidden">
+                ⚠ AI-generated from public reports — may be incomplete or outdated. Verify independently.
+              </p>
+            </div>
+          </section>
+
           <section class="card">
-            <h2>🗂 Data Collected <button class="info-btn" data-help="dataCollected" aria-label="What does Data Collected mean?">ⓘ</button></h2>
+            <h2>🗂 <span data-i18n="dataCollected">Data Collected</span> <button class="info-btn" data-help="dataCollected" aria-label="What does Data Collected mean?">ⓘ</button></h2>
             <p class="card-help hidden" data-help-text="dataCollected"></p>
             <ul id="dataCollected"></ul>
             <p class="card-example hidden" id="example-dataCollected"></p>
           </section>
 
           <section class="card">
-            <h2>🤝 Third-Party Sharing <button class="info-btn" data-help="thirdPartySharing" aria-label="What does Third-Party Sharing mean?">ⓘ</button></h2>
+            <h2>🤝 <span data-i18n="thirdPartySharing">Third-Party Sharing</span> <button class="info-btn" data-help="thirdPartySharing" aria-label="What does Third-Party Sharing mean?">ⓘ</button></h2>
             <p class="card-help hidden" data-help-text="thirdPartySharing"></p>
             <ul id="thirdPartySharing"></ul>
             <p class="card-example hidden" id="example-thirdPartySharing"></p>
           </section>
 
           <section class="card">
-            <h2>✊ Your Rights <button class="info-btn" data-help="userRights" aria-label="What does Your Rights mean?">ⓘ</button></h2>
+            <h2>✊ <span data-i18n="userRights">Your Rights</span> <button class="info-btn" data-help="userRights" aria-label="What does Your Rights mean?">ⓘ</button></h2>
             <p class="card-help hidden" data-help-text="userRights"></p>
             <ul id="userRights"></ul>
             <p class="card-example hidden" id="example-userRights"></p>
           </section>
 
+          <section class="card protect-card hidden" id="protectCard">
+            <h2>🔐 <span data-i18n="protectYourData">Protect Your Data</span></h2>
+            <ul id="protectTips"></ul>
+            <div class="ds-block" id="videoBlock">
+              <h3><span data-i18n="helpfulVideos">Helpful videos</span> <span class="ds-src" id="videoSrc">· YouTube · recent</span></h3>
+              <div id="videoList"></div>
+              <a id="ytSearchLink" class="ds-link" target="_blank" rel="noopener" data-i18n="moreVideos">More recent videos on YouTube →</a>
+            </div>
+          </section>
+
           <footer class="summary-footer">
             <span id="genuineNote" class="genuine"></span>
-            <a id="fullPolicyLink" href="#" target="_blank" rel="noopener">Read full policy →</a>
+            <a id="fullPolicyLink" href="#" target="_blank" rel="noopener" data-i18n="readFullPolicy">Read full policy →</a>
           </footer>
         </article>
 
         <div id="errorBox" class="error-box hidden">
           <p id="errorMsg"></p>
-          <button id="retryBtn" class="secondary">Try again</button>
+          <button id="retryBtn" class="secondary" data-i18n="tryAgain">Try again</button>
         </div>
       </section>
 

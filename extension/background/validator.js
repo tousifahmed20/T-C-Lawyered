@@ -4,7 +4,12 @@
  * are still summarized locally but never uploaded to the hive — this prevents
  * poisoning the shared cache with fake or misidentified content.
  */
-import { AUTHENTICITY_CONFIDENCE_THRESHOLD, TOKENS } from '../utils/CONSTANTS.js';
+import {
+  AUTHENTICITY_CONFIDENCE_THRESHOLD,
+  TOKENS,
+  DOC_TYPES,
+  UPLOADABLE_DOC_TYPES,
+} from '../utils/CONSTANTS.js';
 import { authenticityPrompt } from '../utils/prompts.js';
 import { callLLMJson } from './llm.js';
 import { createLogger } from '../utils/logger.js';
@@ -15,6 +20,7 @@ const log = createLogger('validator');
  * @typedef {object} GenuineCheck
  * @property {boolean} genuine
  * @property {number} confidence  0-100
+ * @property {'privacy'|'terms'|'other_legal'|'not_legal'} docType
  * @property {string} reason
  */
 
@@ -36,6 +42,7 @@ export async function validateAuthenticity({ url, text, llmConfig }) {
     const check = {
       genuine: Boolean(json.genuine),
       confidence: clampConfidence(json.confidence),
+      docType: normalizeDocType(json.docType),
       reason: typeof json.reason === 'string' ? json.reason : 'No reason provided.',
     };
     log.debug('authenticity:', check);
@@ -44,17 +51,34 @@ export async function validateAuthenticity({ url, text, llmConfig }) {
     // A validation failure is not a genuine=false verdict — surface it so the
     // pipeline can decide. Default to not-genuine so we never upload on error.
     log.warn('validation failed:', error.message);
-    return { genuine: false, confidence: 0, reason: `Validation error: ${error.message}` };
+    return {
+      genuine: false,
+      confidence: 0,
+      docType: 'not_legal',
+      reason: `Validation error: ${error.message}`,
+    };
   }
 }
 
 /**
- * Gate for hive upload: genuine AND confidence >= threshold.
+ * Gate for hive upload: genuine AND confident AND an actual legal document.
+ * The docType requirement is the firewall that keeps non-policy pages (marketing,
+ * articles, cookie banners) out of the shared cache even if they slip past
+ * detection — they're summarized locally but never uploaded.
  * @param {GenuineCheck} check
  * @returns {boolean}
  */
 export function passesUploadGate(check) {
-  return check.genuine === true && check.confidence >= AUTHENTICITY_CONFIDENCE_THRESHOLD;
+  return (
+    check.genuine === true &&
+    check.confidence >= AUTHENTICITY_CONFIDENCE_THRESHOLD &&
+    UPLOADABLE_DOC_TYPES.includes(check.docType)
+  );
+}
+
+/** Coerce the model's docType into a known value; unknown → not_legal (safe). */
+function normalizeDocType(value) {
+  return DOC_TYPES.includes(value) ? value : 'not_legal';
 }
 
 function clampConfidence(value) {

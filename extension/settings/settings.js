@@ -3,7 +3,14 @@
  * keys + prefs, runs provider health checks, and manages local data (usage,
  * export, clear). Talks to the SW only for the live provider test.
  */
-import { MSG, PROVIDER_MODELS } from '../utils/CONSTANTS.js';
+import {
+  MSG,
+  PROVIDER_ORDER,
+  PROVIDER_LABELS,
+  PROVIDER_KEY_URLS,
+  RECOMMENDED_PROVIDER,
+  SUPPORTED_LANGUAGES,
+} from '../utils/CONSTANTS.js';
 import { createLogger } from '../utils/logger.js';
 import {
   saveProvider,
@@ -13,6 +20,8 @@ import {
   savePrefs,
   saveYoutubeKey,
   hasYoutubeKey,
+  getLanguage,
+  saveLanguage,
 } from '../utils/config.js';
 import { listBrowserVoices } from '../audio/tts.js';
 import { exportAll, clearAll, estimateUsage } from '../storage/db.js';
@@ -23,6 +32,7 @@ const $ = (id) => document.getElementById(id);
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+  await renderLanguage();
   await renderProviders();
   await renderPrefs();
   renderVoices();
@@ -55,6 +65,21 @@ function wireYoutube() {
   });
 }
 
+/* ---------------------------- language --------------------------- */
+
+async function renderLanguage() {
+  const sel = $('langSelect');
+  const current = await getLanguage();
+  sel.innerHTML = SUPPORTED_LANGUAGES.map(
+    (l) => `<option value="${l.code}">${l.native} — ${l.name}</option>`,
+  ).join('');
+  sel.value = current;
+  sel.addEventListener('change', async () => {
+    await saveLanguage(sel.value);
+    toast('Language saved. Re-scan a page to apply.');
+  });
+}
+
 /* --------------------------- providers --------------------------- */
 
 async function renderProviders() {
@@ -62,13 +87,17 @@ async function renderProviders() {
   const root = $('providers');
   root.innerHTML = '';
 
-  for (const provider of Object.keys(PROVIDER_MODELS)) {
+  for (const provider of PROVIDER_ORDER) {
     const info = meta[provider];
+    if (!info) continue;
+    const label = PROVIDER_LABELS[provider] || provider;
+    const keyUrl = PROVIDER_KEY_URLS[provider];
+    const recommended = provider === RECOMMENDED_PROVIDER;
     const card = document.createElement('div');
     card.className = `provider${info.active ? ' active' : ''}`;
     card.innerHTML = `
       <div class="provider-head">
-        <h3>${provider}</h3>
+        <h3>${label}${recommended ? ' <span class="badge rec">Recommended</span>' : ''}</h3>
         <span class="badge ${info.configured ? 'ok' : ''}">${info.configured ? 'Configured' : 'Not set'}</span>
       </div>
       <div class="provider-fields">
@@ -77,6 +106,13 @@ async function renderProviders() {
           ${info.models.map((m) => `<option value="${m}" ${m === info.model ? 'selected' : ''}>${m}</option>`).join('')}
         </select>
       </div>
+      ${
+        keyUrl
+          ? `<p class="key-help hint">No key yet?
+               <a href="${keyUrl}" target="_blank" rel="noopener">Get a ${label} key ↗</a>
+               — create it, copy it, then paste it above.</p>`
+          : ''
+      }
       <div class="provider-actions">
         <button class="primary" data-action="save">Save</button>
         <button class="secondary" data-action="test">Test</button>

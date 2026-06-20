@@ -75,6 +75,40 @@ body {
   color: var(--muted);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lang-select {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  max-width: 110px;
+}
+
+.scanned-line {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+/* RTL languages (e.g. Arabic). */
+body[dir='rtl'] {
+  direction: rtl;
+}
+
+body[dir='rtl'] .card ul,
+body[dir='rtl'] .ds-block ul,
+body[dir='rtl'] .change-card ul {
+  padding-left: 0;
+  padding-right: 18px;
+}
+
 .icon-btn {
   background: transparent;
   border: none;

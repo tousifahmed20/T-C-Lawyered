@@ -47,7 +47,8 @@ const staticAssets = [
 
 const sharedOptions = {
   bundle: true,
-  sourcemap: DEV ? 'inline' : false,
+  // External (.map) rather than a giant inline blob inside the worker script.
+  sourcemap: DEV ? 'linked' : false,
   minify: !DEV,
   target: ['chrome120'],
   logLevel: 'info',

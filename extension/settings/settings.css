@@ -141,6 +141,26 @@ input[type='password'] {
   border-color: var(--green);
 }
 
+.badge.rec {
+  color: var(--accent);
+  border-color: var(--accent);
+  margin-left: 6px;
+}
+
+.key-help {
+  margin: 8px 0 0;
+}
+
+.key-help a {
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.key-help a:hover {
+  text-decoration: underline;
+}
+
 .provider-fields {
   display: grid;
   gap: 10px;

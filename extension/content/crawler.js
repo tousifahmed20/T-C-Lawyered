@@ -18,6 +18,15 @@ import { extractPolicyText, wordCount, findOpenModal } from './extractor.js';
 
 const log = createLogger('crawler');
 
+/**
+ * False once the extension has been reloaded/disabled while this page stayed
+ * open — at which point `chrome.runtime` is torn down and any messaging call
+ * would throw "Cannot read properties of undefined (reading 'sendMessage')".
+ */
+function extensionAlive() {
+  return Boolean(chrome?.runtime?.id);
+}
+
 /** Elements that plausibly toggle a collapsible/section open. */
 const TOGGLE_SELECTOR = [
   'summary',
@@ -165,9 +174,14 @@ function inferPolicyType() {
 }
 
 function reportProgress(extra) {
-  chrome.runtime
-    .sendMessage({ type: MSG.CRAWL_PROGRESS, lines: collected.length, ...extra })
-    .catch(() => {});
+  if (!extensionAlive()) return;
+  try {
+    chrome.runtime
+      .sendMessage({ type: MSG.CRAWL_PROGRESS, lines: collected.length, ...extra })
+      .catch(() => {});
+  } catch {
+    /* context invalidated mid-crawl — nothing left to report to */
+  }
 }
 
 /** Short human label for a toggle, for the diagnostic report. */
@@ -333,18 +347,23 @@ async function autoCrawl() {
     sections: report.length,
     empties: empties.length,
   });
-  chrome.runtime
-    .sendMessage({
-      type: MSG.POLICY_DETECTED,
-      payload: {
-        url: window.location.href,
-        hostname: window.location.hostname,
-        policyType: inferPolicyType(),
-        text: merged,
-        force: true, // bypass cache; this is a freshly assembled document
-      },
-    })
-    .catch(() => {});
+  if (!extensionAlive()) return;
+  try {
+    chrome.runtime
+      .sendMessage({
+        type: MSG.POLICY_DETECTED,
+        payload: {
+          url: window.location.href,
+          hostname: window.location.hostname,
+          policyType: inferPolicyType(),
+          text: merged,
+          force: true, // bypass cache; this is a freshly assembled document
+        },
+      })
+      .catch(() => {});
+  } catch {
+    /* context invalidated — drop the freshly assembled result silently */
+  }
 }
 
 // Re-entry guard: never run two crawls in the same page at once.

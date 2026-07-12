@@ -1,0 +1,28 @@
+{
+  "name": "tc-lawyered-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The hive — a read-heavy, content-addressed cache of T&C policy summaries. Zero user data.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node scripts/migrate.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "drizzle-orm": "^0.36.4",
+    "fastify": "^5.1.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}

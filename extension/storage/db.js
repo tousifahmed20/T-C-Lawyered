@@ -66,11 +66,21 @@ export async function getSite(domain, policyType) {
 
 /* --------------------------- snapshots --------------------------- */
 
-/** Store a full version snapshot (raw text + summary). */
+/**
+ * Store a full version snapshot (raw text + summary).
+ * `ts` is the first-seen time (preserved across re-checks); `lastCheckedAt` is
+ * refreshed on every write and drives the 2-month staleness re-check.
+ */
 export async function putSnapshot(snapshot) {
   try {
     const db = await getDB();
-    await db.put('snapshots', { ...snapshot, ts: snapshot.ts ?? Date.now() });
+    const now = Date.now();
+    const existing = snapshot.ts ? null : await db.get('snapshots', snapshot.hash);
+    await db.put('snapshots', {
+      ...snapshot,
+      ts: snapshot.ts ?? existing?.ts ?? now,
+      lastCheckedAt: now,
+    });
   } catch (error) {
     log.error('putSnapshot failed:', error);
   }

@@ -126,6 +126,9 @@ function renderSummary(summary, meta) {
   $('genuineNote').textContent = gc
     ? `Authenticity: ${gc.confidence}%`
     : '';
+  $('scannedNote').textContent = meta?.scannedAt
+    ? `Last checked ${new Date(meta.scannedAt).toLocaleDateString()}`
+    : '';
   if (meta?.url) $('fullPolicyLink').href = meta.url;
 }
 
@@ -351,7 +354,8 @@ function fillList(id, items) {
 }
 
 function humanizeError(message = '') {
-  if (message.startsWith('NO_PROVIDER')) return 'Add an LLM API key in Settings to summarize new documents.';
+  if (message.startsWith('NO_PROVIDER'))
+    return 'Add an AI key in Settings to summarize new documents. Tip: OpenRouter gives you a free one — no card needed.';
   if (message.startsWith('INVALID_API_KEY')) return 'Your API key was rejected. Check it in Settings.';
   if (message.startsWith('RATE_LIMITED')) return 'Provider rate limit hit. Wait a moment and retry.';
   if (message.startsWith('TIMEOUT')) return 'The request timed out. Try again.';
@@ -434,6 +438,7 @@ function domainFromActiveTab() {
 
 function wireButtons() {
   $('settingsBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
+  $('freeSetupBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
   $('rescanBtn').addEventListener('click', rescan);
   $('retryBtn').addEventListener('click', rescan);
   $('autoReadBtn').addEventListener('click', startCrawl);

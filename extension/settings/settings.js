@@ -30,6 +30,22 @@ async function init() {
   wireDataButtons();
   await renderYoutubeStatus();
   wireYoutube();
+  wireFreeSetup();
+}
+
+/* --------------------------- free setup -------------------------- */
+
+function wireFreeSetup() {
+  const jump = $('jumpToProviders');
+  if (!jump) return;
+  jump.addEventListener('click', () => {
+    const card = $('provider-openrouter');
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('flash');
+    setTimeout(() => card.classList.remove('flash'), 1400);
+    card.querySelector('[data-field="key"]')?.focus();
+  });
 }
 
 /* ----------------------------- youtube --------------------------- */
@@ -66,9 +82,12 @@ async function renderProviders() {
     const info = meta[provider];
     const card = document.createElement('div');
     card.className = `provider${info.active ? ' active' : ''}`;
+    card.id = `provider-${provider}`;
+    const freeBadge = provider === 'openrouter' ? '<span class="badge free">Free · Recommended</span>' : '';
     card.innerHTML = `
       <div class="provider-head">
         <h3>${provider}</h3>
+        ${freeBadge}
         <span class="badge ${info.configured ? 'ok' : ''}">${info.configured ? 'Configured' : 'Not set'}</span>
       </div>
       <div class="provider-fields">

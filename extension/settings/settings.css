@@ -67,6 +67,51 @@ header h1 {
   margin: 0 0 6px;
 }
 
+/* Free-setup tour: a lightly accented call-out panel. */
+.panel.highlight {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(108, 140, 255, 0.08), var(--surface));
+}
+
+ol.tour {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+ol.tour li {
+  margin-bottom: 6px;
+}
+
+ol.tour code,
+.hint code {
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
+.badge.free {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+/* Brief highlight when the tour scrolls the user to the OpenRouter card. */
+.provider.flash {
+  animation: provider-flash 1.4s ease;
+}
+
+@keyframes provider-flash {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  30% {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}
+
 .hint {
   color: var(--muted);
   font-size: 12px;

@@ -80,6 +80,13 @@ export const STRIPPED_SUBDOMAINS = ['www', 'accounts', 'legal', 'policies', 'hel
 /** Snapshot retention before auto-prune (ms). 12 months. */
 export const SNAPSHOT_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
+/**
+ * A cached summary older than this is re-checked and re-summarized on the next
+ * visit (2 months). Keeps summaries current as models and public track records
+ * change, even when the policy text itself is unchanged.
+ */
+export const RECHECK_TTL_MS = 60 * 24 * 60 * 60 * 1000;
+
 /** Network timeout for any single fetch (ms). */
 export const FETCH_TIMEOUT_MS = 30000;
 

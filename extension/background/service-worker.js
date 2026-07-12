@@ -10,7 +10,7 @@
  *  - The SW has no DOM. All text comes from the content script via messages.
  *  - Per-tab in-flight results are cached so the popup can pull them on open.
  */
-import { MSG, POLICY_TYPES, SEVERITY, SEVERITY_COLORS } from '../utils/CONSTANTS.js';
+import { MSG, POLICY_TYPES, SEVERITY, SEVERITY_COLORS, RECHECK_TTL_MS } from '../utils/CONSTANTS.js';
 import { createLogger } from '../utils/logger.js';
 import { normalizeDomain } from '../utils/domain.js';
 import { getActiveLLMConfig, getLLMConfig, getPrefs, getYoutubeKey } from '../utils/config.js';
@@ -110,20 +110,30 @@ async function onPolicyDetected(payload, sender) {
   setTab(tabId, { status: 'working', meta });
 
   try {
-    // 1) Already have it locally? Render instantly.
+    // Staleness: a cached summary older than the re-check window is refreshed on
+    // this visit even if the policy text is unchanged (F-06 currency).
     const existing = await getSnapshot(hash);
-    if (existing?.summary && !payload.force) {
+    const lastChecked = existing?.lastCheckedAt ?? existing?.ts ?? 0;
+    const stale = Boolean(existing?.summary) && Date.now() - lastChecked > RECHECK_TTL_MS;
+    const refresh = Boolean(payload.force) || stale;
+
+    // 1) Already have it locally and still fresh? Render instantly.
+    if (existing?.summary && !refresh) {
       log.debug('local cache hit');
+      meta.scannedAt = lastChecked;
       await finalize(tabId, { domain, policyType, hash, summary: existing.summary, meta });
       return { ok: true, status: 'ready', cached: 'local' };
     }
+    if (stale) log.debug('cached summary older than the re-check window — refreshing');
 
-    // 2) Hive lookup (non-blocking, degrades to miss).
-    if (prefs.hiveEnabled) {
+    // 2) Hive lookup (non-blocking, degrades to miss). Skipped on a refresh —
+    //    for the same hash the hive only holds the same summary we're refreshing.
+    if (prefs.hiveEnabled && !refresh) {
       const hit = await lookupPolicy(hash, domain);
       if (hit.found && hit.summary) {
         log.debug('hive hit');
         await putSnapshot({ hash, domain, policyType, rawText: text, summary: hit.summary });
+        meta.scannedAt = Date.now();
         await finalize(tabId, { domain, policyType, hash, summary: hit.summary, meta });
         return { ok: true, status: 'ready', cached: 'hive' };
       }
@@ -132,6 +142,14 @@ async function onPolicyDetected(payload, sender) {
     // 3) Miss → need the user's LLM key from here on.
     const llmConfig = await getActiveLLMConfig();
     if (!llmConfig) {
+      // Graceful degradation: if we only wanted to refresh a stale summary but
+      // have no provider to do it, keep showing the cached one rather than error.
+      if (existing?.summary) {
+        log.debug('no provider to refresh stale summary — serving cached');
+        meta.scannedAt = lastChecked;
+        await finalize(tabId, { domain, policyType, hash, summary: existing.summary, meta });
+        return { ok: true, status: 'ready', cached: 'local-stale' };
+      }
       const err = 'NO_PROVIDER: Add an LLM API key in settings to summarize new documents.';
       setTab(tabId, { status: 'error', error: err, meta });
       notify(tabId, { type: MSG.SUMMARY_ERROR, error: err });
@@ -200,6 +218,7 @@ async function onPolicyDetected(payload, sender) {
     }
 
     // 9) Render now, then upload to hive in the background (gated).
+    meta.scannedAt = Date.now();
     await finalize(tabId, { domain, policyType, hash, summary: fullSummary, meta });
 
     if (prefs.hiveEnabled && passesUploadGate(genuineCheck)) {

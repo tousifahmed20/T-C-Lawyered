@@ -8,26 +8,28 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.lifecycleScope
 import dev.tclawyered.app.R
+import dev.tclawyered.app.capture.CaptureSession
+import dev.tclawyered.app.ui.MainActivity
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * The floating "read this policy" bubble that hovers over other apps
- * (SYSTEM_ALERT_WINDOW). The user drags it out of the way; a tap triggers a
- * capture of whatever policy screen is currently visible.
+ * The floating "read this policy" bubble (SYSTEM_ALERT_WINDOW). Drag to reposition.
+ *   • Tap        → capture + OCR the current screen (repeat while scrolling).
+ *   • Long-press → finish: hand the stitched text to the pipeline (opens the app).
  *
- * Requires the "Draw over other apps" permission (Settings.canDrawOverlays),
- * which MainActivity requests before starting this service.
- *
- * SCOPE: the draggable, tappable bubble is fully implemented. The tap currently
- * broadcasts CAPTURE intent; wiring it to an active ScreenCaptureService session
- * is the next slice.
+ * Capture needs an active [CaptureSession] (start "Read the current screen" in the
+ * app first); a tap without one nudges the user to enable it.
  */
 class BubbleService : LifecycleService() {
 
@@ -48,7 +50,6 @@ class BubbleService : LifecycleService() {
             setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
             contentDescription = getString(R.string.app_name)
         }
-
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -60,24 +61,25 @@ class BubbleService : LifecycleService() {
             x = 24
             y = 240
         }
-
         view.setOnTouchListener(DragTapListener())
         windowManager.addView(view, params)
         bubble = view
     }
 
-    /** Distinguishes a tap (fire capture) from a drag (reposition the bubble). */
+    /** Distinguishes drag (move) from tap (capture) from long-press (finish). */
     private inner class DragTapListener : View.OnTouchListener {
         private var initialX = 0
         private var initialY = 0
         private var touchX = 0f
         private var touchY = 0f
+        private var downAt = 0L
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = params.x; initialY = params.y
                     touchX = event.rawX; touchY = event.rawY
+                    downAt = SystemClock.uptimeMillis()
                     return true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -88,7 +90,9 @@ class BubbleService : LifecycleService() {
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = abs(event.rawX - touchX) + abs(event.rawY - touchY)
-                    if (moved < TAP_SLOP) onBubbleTapped()
+                    if (moved >= TAP_SLOP) return true // it was a drag
+                    val held = SystemClock.uptimeMillis() - downAt
+                    if (held >= LONG_PRESS_MS) onFinish() else onCapture()
                     return true
                 }
             }
@@ -96,11 +100,39 @@ class BubbleService : LifecycleService() {
         }
     }
 
-    private fun onBubbleTapped() {
-        // TODO(next slice): call the bound ScreenCaptureService.captureOnce(),
-        // stitch frames while the user scrolls, then run SummarizePipeline.
-        sendBroadcast(Intent(ACTION_CAPTURE).setPackage(packageName))
+    private fun onCapture() {
+        if (!CaptureSession.isActive) {
+            toast("Start \"Read the current screen\" in the app first.")
+            return
+        }
+        lifecycleScope.launch {
+            val words = CaptureSession.captureFrame()
+            toast("Captured — $words words so far. Long-press to summarize.")
+        }
     }
+
+    private fun onFinish() {
+        if (!CaptureSession.isActive) {
+            toast("Nothing captured yet.")
+            return
+        }
+        val text = CaptureSession.assembledText()
+        CaptureSession.resetDocument()
+        if (text.isBlank()) {
+            toast("No text captured. Tap over the policy first.")
+            return
+        }
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(MainActivity.EXTRA_SHARED_IS_URL, false)
+                putExtra(MainActivity.EXTRA_SHARED_PAYLOAD, text)
+                putExtra(MainActivity.EXTRA_SHARED_DOMAIN, "")
+            },
+        )
+    }
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     private fun overlayType(): Int =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -111,15 +143,13 @@ class BubbleService : LifecycleService() {
 
     private fun startForegroundNotice() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    getString(R.string.bubble_channel_name),
-                    NotificationManager.IMPORTANCE_MIN,
-                ),
-            )
-        }
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                getString(R.string.bubble_channel_name),
+                NotificationManager.IMPORTANCE_MIN,
+            ),
+        )
         val notification: Notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.bubble_notification_title))
             .setContentText(getString(R.string.bubble_notification_text))
@@ -141,18 +171,13 @@ class BubbleService : LifecycleService() {
     }
 
     companion object {
-        const val ACTION_CAPTURE = "dev.tclawyered.app.CAPTURE"
         private const val CHANNEL_ID = "bubble"
         private const val NOTIF_ID = 43
         private const val TAP_SLOP = 16f
+        private const val LONG_PRESS_MS = 600L
 
         fun start(context: Context) {
-            val intent = Intent(context, BubbleService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(Intent(context, BubbleService::class.java))
         }
 
         fun stop(context: Context) {

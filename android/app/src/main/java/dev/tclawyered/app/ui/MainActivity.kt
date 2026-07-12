@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import dev.tclawyered.app.content.PolicyFetcher
 import dev.tclawyered.app.data.SettingsRepository
 import dev.tclawyered.app.data.hive.HiveClient
 import dev.tclawyered.app.data.local.LocalStore
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private val store by lazy { LocalStore(applicationContext) }
     private val settings by lazy { SettingsRepository(applicationContext) }
     private val hive by lazy { HiveClient() }
+    private val fetcher by lazy { PolicyFetcher() }
     private val pipeline by lazy { SummarizePipeline(store, settings, hive, lifecycleScope) }
 
     private val captureConsent = registerForActivityResult(
@@ -71,27 +73,33 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val openHistory = { startActivity(Intent(this, HistoryActivity::class.java)) }
                     when {
-                        // Shared policy text → run the pipeline and render it.
+                        // Shared policy text → summarize it directly.
                         hasShare && !isUrl && payload.isNotBlank() -> SummarizeScreen(
                             pipeline = pipeline,
-                            input = PolicyInput(
-                                text = payload,
-                                url = url,
-                                policyType = PolicyType.guess(payload, url),
-                            ),
+                            loadInput = {
+                                PolicyInput(payload, url, PolicyType.guess(payload, url))
+                            },
+                            loadingText = "Reading and summarizing… up to a minute for a new document.",
+                            onOpenSettings = openSettings,
+                        )
+                        // Shared link → fetch the page, extract text, then summarize.
+                        hasShare && isUrl && payload.isNotBlank() -> SummarizeScreen(
+                            pipeline = pipeline,
+                            loadInput = {
+                                val text = fetcher.fetchText(payload)
+                                PolicyInput(text, payload, PolicyType.guess(text, payload))
+                            },
+                            loadingText = "Fetching the page and summarizing…",
                             onOpenSettings = openSettings,
                         )
                         else -> HomeScreen(
-                            sharedNote = if (hasShare && isUrl) {
-                                "Link received. Fetching a page from a URL lands in a later " +
-                                    "update — for now, open the policy and share the selected text."
-                            } else {
-                                null
-                            },
+                            sharedNote = null,
                             onEnableBubble = ::enableBubble,
                             onStartCapture = ::requestCapture,
                             onOpenSettings = openSettings,
+                            onOpenHistory = openHistory,
                         )
                     }
                 }
@@ -129,12 +137,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SummarizeScreen(
     pipeline: SummarizePipeline,
-    input: PolicyInput,
+    loadInput: suspend () -> PolicyInput,
+    loadingText: String,
     onOpenSettings: () -> Unit,
 ) {
     // null = still running; otherwise the pipeline outcome.
     var result by remember { mutableStateOf<PipelineResult?>(null) }
-    LaunchedEffect(input.text) { result = pipeline.run(input) }
+    LaunchedEffect(Unit) {
+        result = try {
+            pipeline.run(loadInput())
+        } catch (e: Exception) {
+            PipelineResult.Failed(e.message ?: "Something went wrong.")
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -145,7 +160,7 @@ private fun SummarizeScreen(
     ) {
         Text("T&C Lawyered", style = MaterialTheme.typography.headlineSmall)
         when (val r = result) {
-            null -> Text("Reading and summarizing… this can take up to a minute for a new document.")
+            null -> Text(loadingText)
             is PipelineResult.Ready -> SummaryView(r.summary, r.source, r.scannedAt)
             is PipelineResult.NeedsProvider -> {
                 Text("Add an AI key to summarize new documents. OpenRouter gives you a free one — no card needed.")
@@ -162,6 +177,8 @@ private fun humanizeError(message: String): String = when {
     message.startsWith("TIMEOUT") -> "The request timed out. Try again."
     message.startsWith("NETWORK") -> "Couldn't reach the provider. Check your connection."
     message.startsWith("EMPTY_TEXT") -> "No policy text was found to summarize."
+    message.startsWith("FETCH_FAILED") -> "Couldn't open that page. Try sharing the selected text instead."
+    message.startsWith("FETCH_EMPTY") -> "That page didn't have enough readable text. Try selecting the policy text and sharing it."
     else -> message
 }
 
@@ -171,6 +188,7 @@ private fun HomeScreen(
     onEnableBubble: () -> Unit,
     onStartCapture: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenHistory: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -196,6 +214,9 @@ private fun HomeScreen(
         }
         Button(onClick = onStartCapture) {
             Text("Read the current screen (screen capture)")
+        }
+        Button(onClick = onOpenHistory) {
+            Text("History")
         }
     }
 }

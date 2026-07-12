@@ -38,6 +38,11 @@
             android:exported="false"
             android:label="@string/settings_label" />
 
+        <activity
+            android:name=".ui.HistoryActivity"
+            android:exported="false"
+            android:label="@string/history_label" />
+
         <!-- Share-sheet entry point: "Share -> T&C Lawyered" for text or a link. -->
         <activity
             android:name=".share.ShareReceiverActivity"

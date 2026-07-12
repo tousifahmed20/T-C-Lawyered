@@ -58,6 +58,9 @@ class LocalStore(context: Context) {
     suspend fun history(domain: String, type: PolicyType): List<SnapshotEntity> =
         dao.snapshotsForDomain(domain, type.wire)
 
+    /** Recent snapshots across all sites for the History screen. */
+    suspend fun recent(limit: Int = 100): List<SnapshotEntity> = dao.recent(limit)
+
     /** Auto-prune snapshots older than the retention window (F-12). */
     suspend fun prune(): Int =
         dao.pruneOlderThan(System.currentTimeMillis() - RETENTION_MS)

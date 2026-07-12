@@ -17,6 +17,10 @@ interface PolicyDao {
     @Query("SELECT * FROM snapshots WHERE domain = :domain AND policyType = :type ORDER BY ts DESC")
     suspend fun snapshotsForDomain(domain: String, type: String): List<SnapshotEntity>
 
+    /** Recent snapshots across all sites, most-recently-checked first (History tab). */
+    @Query("SELECT * FROM snapshots ORDER BY lastCheckedAt DESC LIMIT :limit")
+    suspend fun recent(limit: Int): List<SnapshotEntity>
+
     @Query("SELECT * FROM sites WHERE domain = :domain AND policyType = :type LIMIT 1")
     suspend fun getSite(domain: String, type: String): SiteEntity?
 

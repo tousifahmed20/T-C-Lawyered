@@ -45,10 +45,12 @@ android/app/src/main/java/dev/tclawyered/app/
 ├── pipeline/      SummarizePipeline orchestrator + Summarizer/Validator/Differ
 ├── llm/           Provider abstraction + adapters (openrouter/anthropic/openai/gemini)
 ├── crypto/        KeyVault.kt — Android Keystore AES-GCM key encryption
-├── capture/       OcrExtractor.kt, ScreenCaptureService.kt — on-device screen→text
-├── overlay/       BubbleService.kt — the draggable floating reader bubble
+├── content/       PolicyFetcher + HtmlExtractor — fetch a shared URL → visible text
+├── capture/       OcrExtractor, CaptureSession, ScreenCaptureService — screen→text
+├── overlay/       BubbleService.kt — floating bubble (tap=capture, long-press=finish)
+├── audio/         Tts.kt — native Android text-to-speech (free, offline)
 ├── share/         ShareReceiverActivity.kt — the share-sheet entry point
-└── ui/            MainActivity.kt (home + tour) + SettingsActivity.kt (provider setup)
+└── ui/            MainActivity (home/summarize), SettingsActivity, HistoryActivity, SummaryView
 ```
 
 **Why these stay in lock-step with the extension:** the hash is the shared cache
@@ -89,10 +91,12 @@ Requires a real device or emulator for the overlay + screen-capture permissions.
       diff → gated upload) with the 2-month re-check + graceful degradation,
       Room storage (snapshots/sites + history + prune), and a functional summary
       view wired end-to-end for the share-TEXT path.
-- [ ] Slice 4 — fetch a shared URL's page + text extraction; wire the bubble tap
-      to a bound capture session + `TextStitcher` scroll-capture; polished summary
-      UI (severity badges, glossary), history screen, TTS.
-- [ ] Slice 5 — TTS (Android native), data-safety (breaches/track record), polish.
+- [x] Slice 4 — shared-URL page fetch + HTML text extraction; bubble tap →
+      CaptureSession → OCR → pipeline (tap to grab each screen, long-press to
+      summarize); History screen; native TTS ("Listen") on summaries.
+- [ ] Slice 5 — data-safety (HIBP breaches + AI track record), protection tips +
+      videos, premium OpenAI TTS, richer cards (severity colours, glossary),
+      Gradle wrapper commit + first compile pass.
 
 ## Not doing on Android
 

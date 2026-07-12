@@ -40,7 +40,9 @@ android/app/src/main/java/dev/tclawyered/app/
 │   ├── Chunker.kt     Token estimate + overlapping split (chunker.js)
 │   └── Prompts.kt     All LLM prompts (prompts.js)
 ├── model/         Summary.kt, PolicyType.kt — the SummaryJSON schema, wire-compatible
-├── data/          HiveClient.kt (hive.js contract) + SettingsRepository (DataStore)
+├── data/          HiveClient (hive.js contract), SettingsRepository (DataStore),
+│                  local/ (Room: entities, dao, db, LocalStore + staleness rule)
+├── pipeline/      SummarizePipeline orchestrator + Summarizer/Validator/Differ
 ├── llm/           Provider abstraction + adapters (openrouter/anthropic/openai/gemini)
 ├── crypto/        KeyVault.kt — Android Keystore AES-GCM key encryption
 ├── capture/       OcrExtractor.kt, ScreenCaptureService.kt — on-device screen→text
@@ -83,10 +85,13 @@ Requires a real device or emulator for the overlay + screen-capture permissions.
       client, capture + overlay + share scaffolds, onboarding tour.
 - [x] Slice 2 — LLM provider layer (OpenRouter, Anthropic, OpenAI, Gemini),
       Android Keystore key encryption, DataStore settings repo, settings screen.
-- [ ] Slice 3 — `SummarizePipeline` (hash → hive lookup → summarize → diff →
-      upload), local storage (Room/SQLite) with the 2-month re-check, history.
-- [ ] Slice 4 — wire the bubble tap to a bound capture session + `TextStitcher`
-      scroll-capture; summary rendering UI (TL;DR, risks, data, sharing, rights).
+- [x] Slice 3 — `SummarizePipeline` (hash → hive lookup → validate → summarize →
+      diff → gated upload) with the 2-month re-check + graceful degradation,
+      Room storage (snapshots/sites + history + prune), and a functional summary
+      view wired end-to-end for the share-TEXT path.
+- [ ] Slice 4 — fetch a shared URL's page + text extraction; wire the bubble tap
+      to a bound capture session + `TextStitcher` scroll-capture; polished summary
+      UI (severity badges, glossary), history screen, TTS.
 - [ ] Slice 5 — TTS (Android native), data-safety (breaches/track record), polish.
 
 ## Not doing on Android

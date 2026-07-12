@@ -18,20 +18,37 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import dev.tclawyered.app.data.SettingsRepository
+import dev.tclawyered.app.data.hive.HiveClient
+import dev.tclawyered.app.data.local.LocalStore
+import dev.tclawyered.app.model.PolicyType
 import dev.tclawyered.app.overlay.BubbleService
+import dev.tclawyered.app.pipeline.PipelineResult
+import dev.tclawyered.app.pipeline.PolicyInput
+import dev.tclawyered.app.pipeline.SummarizePipeline
 
 /**
- * Home screen. First slice: onboarding (free OpenRouter tour), the permission
- * gateways for the two headline capabilities (draw-over-other-apps for the
- * bubble, screen-capture consent for OCR), and a placeholder for the shared
- * payload handed over by the share sheet.
+ * Home + summarize screen. Hosts the onboarding tour and the permission gateways
+ * for the two capture surfaces, and — when text arrives from the share sheet —
+ * runs the full [SummarizePipeline] and renders the result.
  *
- * SCOPE: the summary rendering + full pipeline are the next slice. For now a
- * shared payload just shows its detected domain/length so the flow is visible.
+ * SCOPE (Slice 3): the shared-TEXT path is wired end-to-end. Fetching a shared
+ * URL's page (and the bubble→capture→OCR wiring) is Slice 4.
  */
 class MainActivity : ComponentActivity() {
+
+    private val store by lazy { LocalStore(applicationContext) }
+    private val settings by lazy { SettingsRepository(applicationContext) }
+    private val hive by lazy { HiveClient() }
+    private val pipeline by lazy { SummarizePipeline(store, settings, hive, lifecycleScope) }
 
     private val captureConsent = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -45,25 +62,38 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val sharedNote = intent?.takeIf { it.hasExtra(EXTRA_SHARED_PAYLOAD) }?.let {
-            val isUrl = it.getBooleanExtra(EXTRA_SHARED_IS_URL, false)
-            val domain = it.getStringExtra(EXTRA_SHARED_DOMAIN).orEmpty()
-            val payload = it.getStringExtra(EXTRA_SHARED_PAYLOAD).orEmpty()
-            if (isUrl) "Received link for: ${domain.ifEmpty { "(unknown site)" }}"
-            else "Received ${payload.length} characters of policy text to summarize."
-        }
+        val hasShare = intent?.hasExtra(EXTRA_SHARED_PAYLOAD) == true
+        val isUrl = intent?.getBooleanExtra(EXTRA_SHARED_IS_URL, false) == true
+        val payload = intent?.getStringExtra(EXTRA_SHARED_PAYLOAD).orEmpty()
+        val url = intent?.getStringExtra(EXTRA_SHARED_DOMAIN).orEmpty()
+        val openSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    HomeScreen(
-                        sharedNote = sharedNote,
-                        onEnableBubble = ::enableBubble,
-                        onStartCapture = ::requestCapture,
-                        onOpenSettings = {
-                            startActivity(Intent(this, SettingsActivity::class.java))
-                        },
-                    )
+                    when {
+                        // Shared policy text → run the pipeline and render it.
+                        hasShare && !isUrl && payload.isNotBlank() -> SummarizeScreen(
+                            pipeline = pipeline,
+                            input = PolicyInput(
+                                text = payload,
+                                url = url,
+                                policyType = PolicyType.guess(payload, url),
+                            ),
+                            onOpenSettings = openSettings,
+                        )
+                        else -> HomeScreen(
+                            sharedNote = if (hasShare && isUrl) {
+                                "Link received. Fetching a page from a URL lands in a later " +
+                                    "update — for now, open the policy and share the selected text."
+                            } else {
+                                null
+                            },
+                            onEnableBubble = ::enableBubble,
+                            onStartCapture = ::requestCapture,
+                            onOpenSettings = openSettings,
+                        )
+                    }
                 }
             }
         }
@@ -94,6 +124,45 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_SHARED_PAYLOAD = "shared_payload"
         const val EXTRA_SHARED_DOMAIN = "shared_domain"
     }
+}
+
+@Composable
+private fun SummarizeScreen(
+    pipeline: SummarizePipeline,
+    input: PolicyInput,
+    onOpenSettings: () -> Unit,
+) {
+    // null = still running; otherwise the pipeline outcome.
+    var result by remember { mutableStateOf<PipelineResult?>(null) }
+    LaunchedEffect(input.text) { result = pipeline.run(input) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("T&C Lawyered", style = MaterialTheme.typography.headlineSmall)
+        when (val r = result) {
+            null -> Text("Reading and summarizing… this can take up to a minute for a new document.")
+            is PipelineResult.Ready -> SummaryView(r.summary, r.source, r.scannedAt)
+            is PipelineResult.NeedsProvider -> {
+                Text("Add an AI key to summarize new documents. OpenRouter gives you a free one — no card needed.")
+                Button(onClick = onOpenSettings) { Text("Open Settings") }
+            }
+            is PipelineResult.Failed -> Text(humanizeError(r.message))
+        }
+    }
+}
+
+private fun humanizeError(message: String): String = when {
+    message.startsWith("INVALID_API_KEY") -> "Your API key was rejected. Check it in Settings."
+    message.startsWith("RATE_LIMITED") -> "Provider rate limit hit. Wait a moment and retry."
+    message.startsWith("TIMEOUT") -> "The request timed out. Try again."
+    message.startsWith("NETWORK") -> "Couldn't reach the provider. Check your connection."
+    message.startsWith("EMPTY_TEXT") -> "No policy text was found to summarize."
+    else -> message
 }
 
 @Composable

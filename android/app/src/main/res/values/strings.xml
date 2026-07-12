@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">T&amp;C Lawyered</string>
     <string name="share_target_label">Summarize with T&amp;C Lawyered</string>
+    <string name="settings_label">Settings</string>
     <string name="tagline">You clicked agree. We actually read it.</string>
 
     <string name="capture_channel_name">Screen reading</string>

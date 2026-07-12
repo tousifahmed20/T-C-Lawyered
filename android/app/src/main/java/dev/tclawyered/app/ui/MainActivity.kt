@@ -60,6 +60,9 @@ class MainActivity : ComponentActivity() {
                         sharedNote = sharedNote,
                         onEnableBubble = ::enableBubble,
                         onStartCapture = ::requestCapture,
+                        onOpenSettings = {
+                            startActivity(Intent(this, SettingsActivity::class.java))
+                        },
                     )
                 }
             }
@@ -98,6 +101,7 @@ private fun HomeScreen(
     sharedNote: String?,
     onEnableBubble: () -> Unit,
     onStartCapture: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -115,7 +119,10 @@ private fun HomeScreen(
 
         OpenRouterTour()
 
-        Button(onClick = onEnableBubble, modifier = Modifier.padding(top = 8.dp)) {
+        Button(onClick = onOpenSettings, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Settings — add your AI key")
+        }
+        Button(onClick = onEnableBubble) {
             Text("Enable the floating reader bubble")
         }
         Button(onClick = onStartCapture) {

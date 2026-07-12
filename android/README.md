@@ -40,11 +40,13 @@ android/app/src/main/java/dev/tclawyered/app/
 │   ├── Chunker.kt     Token estimate + overlapping split (chunker.js)
 │   └── Prompts.kt     All LLM prompts (prompts.js)
 ├── model/         Summary.kt, PolicyType.kt — the SummaryJSON schema, wire-compatible
-├── data/hive/     HiveClient.kt — GET/POST /policy, /policy/history (hive.js contract)
+├── data/          HiveClient.kt (hive.js contract) + SettingsRepository (DataStore)
+├── llm/           Provider abstraction + adapters (openrouter/anthropic/openai/gemini)
+├── crypto/        KeyVault.kt — Android Keystore AES-GCM key encryption
 ├── capture/       OcrExtractor.kt, ScreenCaptureService.kt — on-device screen→text
 ├── overlay/       BubbleService.kt — the draggable floating reader bubble
 ├── share/         ShareReceiverActivity.kt — the share-sheet entry point
-└── ui/            MainActivity.kt — home + the free OpenRouter onboarding tour
+└── ui/            MainActivity.kt (home + tour) + SettingsActivity.kt (provider setup)
 ```
 
 **Why these stay in lock-step with the extension:** the hash is the shared cache
@@ -79,8 +81,8 @@ Requires a real device or emulator for the overlay + screen-capture permissions.
 
 - [x] Slice 1 — project skeleton, shared core (hash/domain/chunk/prompts), hive
       client, capture + overlay + share scaffolds, onboarding tour.
-- [ ] Slice 2 — LLM provider layer (OpenRouter first, then Anthropic/OpenAI/Gemini),
-      encrypted key storage (Android Keystore), settings screen.
+- [x] Slice 2 — LLM provider layer (OpenRouter, Anthropic, OpenAI, Gemini),
+      Android Keystore key encryption, DataStore settings repo, settings screen.
 - [ ] Slice 3 — `SummarizePipeline` (hash → hive lookup → summarize → diff →
       upload), local storage (Room/SQLite) with the 2-month re-check, history.
 - [ ] Slice 4 — wire the bubble tap to a bound capture session + `TextStitcher`

@@ -33,6 +33,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_label" />
+
         <!-- Share-sheet entry point: "Share -> T&C Lawyered" for text or a link. -->
         <activity
             android:name=".share.ShareReceiverActivity"

@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">T&amp;C Lawyered</string>
+    <string name="share_target_label">Summarize with T&amp;C Lawyered</string>
+    <string name="tagline">You clicked agree. We actually read it.</string>
+
+    <string name="capture_channel_name">Screen reading</string>
+    <string name="capture_notification_title">Reading this policy…</string>
+    <string name="capture_notification_text">Capturing the screen on your device to summarize it. Nothing but the summary ever leaves your phone.</string>
+
+    <string name="bubble_channel_name">Policy reader bubble</string>
+    <string name="bubble_notification_title">T&amp;C Lawyered is ready</string>
+    <string name="bubble_notification_text">Tap the bubble on a Terms or Privacy screen to summarize it.</string>
+</resources>

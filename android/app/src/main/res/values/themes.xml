@@ -1,0 +1,11 @@
+<resources>
+    <!-- Base theme; Compose supplies the real UI styling. -->
+    <style name="Theme.TcLawyered" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Transparent shell for the share-receiver activity (it shows no UI of its own). -->
+    <style name="Theme.TcLawyered.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A simple section mark (§) centered in the adaptive-icon safe zone. -->
+    <path
+        android:fillColor="#6C8CFF"
+        android:pathData="M54,30 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path
+        android:fillColor="#6C8CFF"
+        android:strokeColor="#6C8CFF"
+        android:strokeWidth="5"
+        android:pathData="M60,42 C60,38 56,36 52,36 C46,36 44,40 44,44 C44,52 64,52 64,60 C64,66 60,70 54,70 C49,70 46,67 46,63" />

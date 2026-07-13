@@ -37,6 +37,24 @@ object Constants {
     /** Below this word count an OCR/extraction result is treated as "nothing found". */
     const val MIN_POLICY_WORDS = 40
 
+    /**
+     * Have I Been Pwned public breach directory (no API key). We download the
+     * whole list and match the domain LOCALLY — the site is never sent to HIBP.
+     */
+    const val HIBP_BREACHES_URL = "https://haveibeenpwned.com/api/v3/breaches"
+    const val HIBP_CACHE_TTL_MS = 24L * 60 * 60 * 1000 // refresh daily
+    const val TRACK_RECORD_TTL_MS = 30L * 24 * 60 * 60 * 1000 // AI track record: 30 days
+    /** Only show AI-reported actions at or above this confidence. */
+    const val TRACK_RECORD_MIN_CONFIDENCE = 70
+
+    /** Change-severity badge colours (ARGB hex), mirroring the extension. */
+    object SeverityColors {
+        const val NONE = 0xFF34A853.toInt()
+        const val LOW = 0xFFFBBC04.toInt()
+        const val MEDIUM = 0xFFFA7B17.toInt()
+        const val HIGH = 0xFFEA4335.toInt()
+    }
+
     /** Subdomains stripped during domain normalization. */
     val STRIPPED_SUBDOMAINS = setOf("www", "accounts", "legal", "policies", "help", "support")
 

@@ -30,6 +30,7 @@ import dev.tclawyered.app.content.PolicyFetcher
 import dev.tclawyered.app.data.SettingsRepository
 import dev.tclawyered.app.data.hive.HiveClient
 import dev.tclawyered.app.data.local.LocalStore
+import dev.tclawyered.app.data.safety.ReputationClient
 import dev.tclawyered.app.model.PolicyType
 import dev.tclawyered.app.overlay.BubbleService
 import dev.tclawyered.app.pipeline.PipelineResult
@@ -50,7 +51,10 @@ class MainActivity : ComponentActivity() {
     private val settings by lazy { SettingsRepository(applicationContext) }
     private val hive by lazy { HiveClient() }
     private val fetcher by lazy { PolicyFetcher() }
-    private val pipeline by lazy { SummarizePipeline(store, settings, hive, lifecycleScope) }
+    private val reputation by lazy { ReputationClient(applicationContext) }
+    private val pipeline by lazy {
+        SummarizePipeline(store, settings, hive, lifecycleScope, reputation)
+    }
 
     private val captureConsent = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -161,7 +165,10 @@ private fun SummarizeScreen(
         Text("T&C Lawyered", style = MaterialTheme.typography.headlineSmall)
         when (val r = result) {
             null -> Text(loadingText)
-            is PipelineResult.Ready -> SummaryView(r.summary, r.source, r.scannedAt)
+            is PipelineResult.Ready -> {
+                SummaryView(r.summary, r.source, r.scannedAt)
+                DataSafetyView(r.domain)
+            }
             is PipelineResult.NeedsProvider -> {
                 Text("Add an AI key to summarize new documents. OpenRouter gives you a free one — no card needed.")
                 Button(onClick = onOpenSettings) { Text("Open Settings") }

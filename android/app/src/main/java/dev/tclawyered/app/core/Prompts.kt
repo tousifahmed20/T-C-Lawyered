@@ -71,6 +71,25 @@ object Prompts {
             "\"changesSeverity\": \"none|low|medium|high\" }",
     )
 
+    /** AI-reported data-safety track record for a company (port of trackRecordPrompt). */
+    fun trackRecord(domain: String) = Prompt(
+        system = "You report ONLY publicly documented data breaches, privacy/data-protection " +
+            "regulatory fines, and major privacy controversies for the company that operates " +
+            "a given domain. Include an item ONLY if you are highly confident it genuinely " +
+            "happened and was widely publicly reported. Never invent, guess, or infer. When " +
+            "in doubt, omit it. Respond ONLY in valid JSON.",
+        user = "Company domain: $domain\n\n" +
+            "List notable, publicly reported privacy or data-protection events for the company " +
+            "operating this domain: data breaches, regulatory fines (e.g. GDPR, FTC), or major " +
+            "privacy controversies.\n\n" +
+            "For each item give: year (YYYY), type (\"breach\" | \"fine\" | \"controversy\"), a " +
+            "one-sentence factual summary, and your confidence (0-100) that it really happened.\n" +
+            "Only include items you are confident about. If you are not confident about any, " +
+            "return an empty array. Do NOT fabricate or pad the list.\n\n" +
+            "Respond: { \"actions\": [ { \"year\": \"YYYY\", \"type\": \"breach|fine|controversy\", " +
+            "\"summary\": \"string\", \"confidence\": 0-100 } ] }",
+    )
+
     data class SectionResult(val summary: String, val points: List<String>)
 
     private val SUMMARY_SCHEMA_INSTRUCTION =

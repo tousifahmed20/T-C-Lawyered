@@ -6,6 +6,7 @@ import dev.tclawyered.app.data.SettingsRepository
 import dev.tclawyered.app.data.hive.HiveClient
 import dev.tclawyered.app.data.hive.UploadRequest
 import dev.tclawyered.app.data.local.LocalStore
+import dev.tclawyered.app.data.safety.ReputationClient
 import dev.tclawyered.app.llm.LlmClient
 import dev.tclawyered.app.model.PolicyType
 import dev.tclawyered.app.model.Severity
@@ -26,7 +27,12 @@ data class PolicyInput(
 
 /** Outcome the UI renders. */
 sealed interface PipelineResult {
-    data class Ready(val summary: Summary, val source: String, val scannedAt: Long) : PipelineResult
+    data class Ready(
+        val summary: Summary,
+        val source: String,
+        val scannedAt: Long,
+        val domain: String,
+    ) : PipelineResult
     data object NeedsProvider : PipelineResult
     data class Failed(val message: String) : PipelineResult
 }
@@ -44,6 +50,7 @@ class SummarizePipeline(
     private val settings: SettingsRepository,
     private val hive: HiveClient,
     private val bgScope: CoroutineScope,
+    private val reputation: ReputationClient? = null,
     llm: LlmClient = LlmClient(),
 ) {
     private val validator = Validator(llm)
@@ -65,7 +72,7 @@ class SummarizePipeline(
 
         // 1) Fresh local hit → render instantly.
         if (existing != null && !refresh) {
-            return PipelineResult.Ready(store.decodeSummary(existing), "local", existing.lastCheckedAt)
+            return PipelineResult.Ready(store.decodeSummary(existing), "local", existing.lastCheckedAt, domain)
         }
 
         // 2) Hive lookup (skipped on refresh — same hash means the same summary).
@@ -73,7 +80,7 @@ class SummarizePipeline(
             val hit = withContext(Dispatchers.IO) { hive.lookup(hash, domain) }
             if (hit.found && hit.summary != null) {
                 store.putSnapshot(hash, domain, type, text, hit.summary, parentHash = null)
-                return PipelineResult.Ready(hit.summary, "hive", System.currentTimeMillis())
+                return PipelineResult.Ready(hit.summary, "hive", System.currentTimeMillis(), domain)
             }
         }
 
@@ -82,7 +89,7 @@ class SummarizePipeline(
         if (config == null) {
             // Graceful: keep showing a stale cached summary rather than erroring.
             if (existing != null) {
-                return PipelineResult.Ready(store.decodeSummary(existing), "local-stale", existing.lastCheckedAt)
+                return PipelineResult.Ready(store.decodeSummary(existing), "local-stale", existing.lastCheckedAt, domain)
             }
             return PipelineResult.NeedsProvider
         }
@@ -122,6 +129,12 @@ class SummarizePipeline(
             store.putSnapshot(hash, domain, type, text, full, parentHash = prior?.hash)
             store.putSite(domain, type, hash)
 
+            // 7b) We're already paying for an LLM call, so generate the reported
+            //     track record now (cached per domain). Never on a cache/hive hit.
+            if (reputation != null && domain.isNotEmpty() && reputation.cached(domain) == null) {
+                runCatching { reputation.generate(domain, config) }
+            }
+
             // 8) Render now; upload to the hive in the background (gated, fire-and-forget).
             if (hiveEnabled && Validator.passesUploadGate(genuine)) {
                 bgScope.launch(Dispatchers.IO) {
@@ -140,7 +153,7 @@ class SummarizePipeline(
                 }
             }
 
-            PipelineResult.Ready(full, "fresh", System.currentTimeMillis())
+            PipelineResult.Ready(full, "fresh", System.currentTimeMillis(), domain)
         } catch (e: Exception) {
             PipelineResult.Failed(e.message ?: "Something went wrong.")
         }

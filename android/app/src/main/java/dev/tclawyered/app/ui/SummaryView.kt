@@ -14,9 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.tclawyered.app.audio.Tts
+import dev.tclawyered.app.core.Constants
 import dev.tclawyered.app.model.Summary
 import java.text.DateFormat
 import java.util.Date
@@ -50,7 +52,14 @@ fun SummaryView(summary: Summary, source: String, scannedAt: Long) {
         Section("TL;DR") { Text(summary.tldr.ifEmpty { "—" }) }
 
         if (summary.whatChanged != null) {
-            Section("What changed${summary.changesSeverity?.let { " ($it)" } ?: ""}") {
+            Section("What changed") {
+                summary.changesSeverity?.let { sev ->
+                    Text(
+                        "Severity: ${sev.uppercase()}",
+                        color = severityColor(sev),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
                 Text(summary.whatChanged)
                 summary.changeList.forEach { Text("• $it") }
             }
@@ -95,6 +104,15 @@ private fun BulletSection(title: String, items: List<String>, example: String) {
         }
     }
 }
+
+private fun severityColor(severity: String): Color = Color(
+    when (severity) {
+        "high" -> Constants.SeverityColors.HIGH
+        "medium" -> Constants.SeverityColors.MEDIUM
+        "low" -> Constants.SeverityColors.LOW
+        else -> Constants.SeverityColors.NONE
+    },
+)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {

@@ -132,7 +132,7 @@ class SummarizePipeline(
             // 7b) We're already paying for an LLM call, so generate the reported
             //     track record now (cached per domain). Never on a cache/hive hit.
             if (reputation != null && domain.isNotEmpty() && reputation.cached(domain) == null) {
-                runCatching { reputation.generate(domain, config) }
+                runCatching { reputation?.generate(domain, config) }
             }
 
             // 8) Render now; upload to the hive in the background (gated, fire-and-forget).

@@ -16,10 +16,10 @@ class Tts(context: Context) {
     private var ready = false
     private var pending: String? = null
 
-    private val engine = TextToSpeech(context.applicationContext) { status ->
+    private val engine: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
         ready = status == TextToSpeech.SUCCESS
         if (ready) {
-            engine.language = Locale.getDefault()
+            engine.setLanguage(Locale.getDefault())
             pending?.let { speak(it); pending = null }
         }
     }

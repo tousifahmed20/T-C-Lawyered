@@ -80,10 +80,17 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[AUTO_SUMMARIZE] = value }
     }
 
+    /** Whether the user has acknowledged the one-time auto-scroll disclaimer. */
+    suspend fun autoScrollAck(): Boolean = context.dataStore.data.first()[AUTO_SCROLL_ACK] ?: false
+    suspend fun setAutoScrollAck(value: Boolean) {
+        context.dataStore.edit { it[AUTO_SCROLL_ACK] = value }
+    }
+
     companion object {
         private val ACTIVE = stringPreferencesKey("active_provider")
         private val HIVE_ENABLED = booleanPreferencesKey("hive_enabled")
         private val AUTO_SUMMARIZE = booleanPreferencesKey("auto_summarize")
+        private val AUTO_SCROLL_ACK = booleanPreferencesKey("auto_scroll_ack")
     }
 }
 

@@ -18,24 +18,42 @@ import android.widget.Toast
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import dev.tclawyered.app.R
+import dev.tclawyered.app.accessibility.ScrollReaderService
 import dev.tclawyered.app.capture.CaptureSession
-import dev.tclawyered.app.ui.MainActivity
+import dev.tclawyered.app.data.SettingsRepository
+import dev.tclawyered.app.data.Videos
+import dev.tclawyered.app.data.hive.HiveClient
+import dev.tclawyered.app.data.local.LocalStore
+import dev.tclawyered.app.data.safety.ReputationClient
+import dev.tclawyered.app.model.PolicyType
+import dev.tclawyered.app.pipeline.PipelineResult
+import dev.tclawyered.app.pipeline.PolicyInput
+import dev.tclawyered.app.pipeline.SummarizePipeline
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
  * The floating "read this policy" bubble (SYSTEM_ALERT_WINDOW). Drag to reposition.
- *   • Tap        → capture + OCR the current screen (repeat while scrolling).
- *   • Long-press → finish: hand the stitched text to the pipeline (opens the app).
+ *   • Tap        → auto-scroll the whole page, OCR it, summarize into the overlay card.
+ *   • Long-press → manual one-shot: summarize just the current screen (no accessibility needed).
  *
- * Capture needs an active [CaptureSession] (start "Read the current screen" in the
- * app first); a tap without one nudges the user to enable it.
+ * Both need an active [CaptureSession] (start "Read the current screen" first).
+ * Auto-scroll additionally needs [ScrollReaderService]; a tap without it nudges the
+ * user to Accessibility settings, and a one-time disclaimer gates the first run.
  */
 class BubbleService : LifecycleService() {
 
     private lateinit var windowManager: WindowManager
     private var bubble: View? = null
     private lateinit var params: WindowManager.LayoutParams
+
+    private val store by lazy { LocalStore(applicationContext) }
+    private val settings by lazy { SettingsRepository(applicationContext) }
+    private val hive by lazy { HiveClient() }
+    private val reputation by lazy { ReputationClient(applicationContext) }
+    private val pipeline by lazy {
+        SummarizePipeline(store, settings, hive, lifecycleScope, reputation)
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -100,36 +118,91 @@ class BubbleService : LifecycleService() {
         }
     }
 
+    /** Tap → auto-scroll + read the whole page (needs the accessibility service). */
     private fun onCapture() {
         if (!CaptureSession.isActive) {
             toast("Start \"Read the current screen\" in the app first.")
             return
         }
+        val reader = ScrollReaderService.instance
+        if (reader == null) {
+            toast("Turn on T&C Lawyered under Settings → Accessibility to auto-scroll.")
+            runCatching {
+                startActivity(
+                    Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+            return
+        }
         lifecycleScope.launch {
-            val words = CaptureSession.captureFrame()
-            toast("Captured — $words words so far. Long-press to summarize.")
+            if (settings.autoScrollAck()) {
+                startAutoRead(reader)
+            } else {
+                SummaryOverlay.showDisclaimer(this@BubbleService) {
+                    lifecycleScope.launch {
+                        settings.setAutoScrollAck(true)
+                        startAutoRead(reader)
+                    }
+                }
+            }
         }
     }
 
+    private fun startAutoRead(reader: ScrollReaderService) {
+        SummaryOverlay.close() // don't obscure the screen while it scrolls + OCRs
+        toast("Auto-reading — scrolling the page…")
+        reader.autoRead { text ->
+            if (text.isBlank()) toast("Couldn't read the page. Try a long-press to capture the current screen.")
+            else summarizeAndShow(text)
+        }
+    }
+
+    /** Long-press → manual one-shot: summarize just the current screen (works without accessibility). */
     private fun onFinish() {
         if (!CaptureSession.isActive) {
-            toast("Nothing captured yet.")
+            toast("Start \"Read the current screen\" in the app first.")
             return
         }
-        val text = CaptureSession.assembledText()
-        CaptureSession.resetDocument()
-        if (text.isBlank()) {
-            toast("No text captured. Tap over the policy first.")
-            return
+        lifecycleScope.launch {
+            CaptureSession.resetDocument()
+            CaptureSession.captureFrame()
+            val text = CaptureSession.assembledText()
+            if (text.isBlank()) toast("No text captured. Point at the policy first.")
+            else summarizeAndShow(text)
         }
-        startActivity(
-            Intent(this, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                putExtra(MainActivity.EXTRA_SHARED_IS_URL, false)
-                putExtra(MainActivity.EXTRA_SHARED_PAYLOAD, text)
-                putExtra(MainActivity.EXTRA_SHARED_DOMAIN, "")
-            },
-        )
+    }
+
+    /** Run the summarize pipeline on [text] and render it into the overlay card. */
+    private fun summarizeAndShow(text: String) {
+        SummaryOverlay.showLoading(this)
+        lifecycleScope.launch {
+            val result = try {
+                pipeline.run(PolicyInput(text, "", PolicyType.guess(text, "")))
+            } catch (e: Exception) {
+                PipelineResult.Failed(e.message ?: "Something went wrong.")
+            }
+            when (result) {
+                is PipelineResult.Ready ->
+                    SummaryOverlay.showSummary(
+                        this@BubbleService, result.summary, result.source, result.scannedAt,
+                        Videos.companyFromDomain(result.domain),
+                    )
+                is PipelineResult.NeedsProvider ->
+                    SummaryOverlay.showMessage(this@BubbleService, "Add an AI key in the app to summarize (OpenRouter gives a free one — no card).")
+                is PipelineResult.Failed ->
+                    SummaryOverlay.showMessage(this@BubbleService, humanize(result.message))
+            }
+        }
+    }
+
+    private fun humanize(message: String): String = when {
+        message.startsWith("INVALID_API_KEY") -> "Your API key was rejected. Check it in Settings."
+        message.startsWith("RATE_LIMITED") -> "Provider rate limit hit. Wait a moment and retry."
+        message.startsWith("TIMEOUT") -> "The request timed out. Try again."
+        message.startsWith("NETWORK") -> "Couldn't reach the provider. Check your connection."
+        message.startsWith("EMPTY_TEXT") -> "No policy text was captured. Tap over the policy first."
+        else -> message
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()

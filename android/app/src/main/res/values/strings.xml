@@ -12,4 +12,7 @@
     <string name="bubble_channel_name">Policy reader bubble</string>
     <string name="bubble_notification_title">T&amp;C Lawyered is ready</string>
     <string name="bubble_notification_text">Tap the bubble on a Terms or Privacy screen to summarize it.</string>
+
+    <string name="accessibility_label">T&amp;C Lawyered auto-scroll</string>
+    <string name="accessibility_description">Lets T&amp;C Lawyered scroll a Terms or Privacy page for you so it can read the whole thing. It only scrolls when you tap the bubble, and never reads or stores screen content on its own.</string>
 </resources>

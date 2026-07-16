@@ -5,16 +5,20 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import dev.tclawyered.app.content.PolicyFetcher
@@ -39,11 +44,10 @@ import dev.tclawyered.app.pipeline.SummarizePipeline
 
 /**
  * Home + summarize screen. Hosts the onboarding tour and the permission gateways
- * for the two capture surfaces, and — when text arrives from the share sheet —
- * runs the full [SummarizePipeline] and renders the result.
+ * for the capture surfaces, and runs the full [SummarizePipeline] on demand.
  *
- * SCOPE (Slice 3): the shared-TEXT path is wired end-to-end. Fetching a shared
- * URL's page (and the bubble→capture→OCR wiring) is Slice 4.
+ * Entry points that converge here: the in-app URL bar, the share sheet (text or
+ * link), and the floating bubble (screen capture / auto-scroll).
  */
 class MainActivity : ComponentActivity() {
 
@@ -78,7 +82,22 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val openHistory = { startActivity(Intent(this, HistoryActivity::class.java)) }
+                    var urlToRead by remember { mutableStateOf<String?>(null) }
                     when {
+                        // In-app URL bar → fetch that page and summarize (no screen scrolling needed).
+                        urlToRead != null -> {
+                            val target = urlToRead!!
+                            BackHandler { urlToRead = null }
+                            SummarizeScreen(
+                                pipeline = pipeline,
+                                loadInput = {
+                                    val text = fetcher.fetchText(target)
+                                    PolicyInput(text, target, PolicyType.guess(text, target))
+                                },
+                                loadingText = "Fetching the page and summarizing…",
+                                onOpenSettings = openSettings,
+                            )
+                        }
                         // Shared policy text → summarize it directly.
                         hasShare && !isUrl && payload.isNotBlank() -> SummarizeScreen(
                             pipeline = pipeline,
@@ -100,6 +119,7 @@ class MainActivity : ComponentActivity() {
                         )
                         else -> HomeScreen(
                             sharedNote = null,
+                            onSubmitUrl = { urlToRead = normalizeUrl(it) },
                             onEnableBubble = ::enableBubble,
                             onStartCapture = ::requestCapture,
                             onOpenSettings = openSettings,
@@ -189,9 +209,20 @@ private fun humanizeError(message: String): String = when {
     else -> message
 }
 
+/** Accept "example.com/privacy" as well as a full URL; default to https. */
+private fun normalizeUrl(input: String): String {
+    val trimmed = input.trim()
+    return if (trimmed.startsWith("http://", true) || trimmed.startsWith("https://", true)) {
+        trimmed
+    } else {
+        "https://$trimmed"
+    }
+}
+
 @Composable
 private fun HomeScreen(
     sharedNote: String?,
+    onSubmitUrl: (String) -> Unit,
     onEnableBubble: () -> Unit,
     onStartCapture: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -209,6 +240,23 @@ private fun HomeScreen(
 
         if (sharedNote != null) {
             Text(sharedNote, style = MaterialTheme.typography.bodyLarge)
+        }
+
+        // Paste-a-URL bar: read a policy page directly, no on-screen scrolling needed.
+        var url by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = url,
+            onValueChange = { url = it },
+            label = { Text("Paste a Terms or Privacy Policy URL") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Button(
+            onClick = { if (url.isNotBlank()) onSubmitUrl(url) },
+            enabled = url.isNotBlank(),
+        ) {
+            Text("Read this URL")
         }
 
         OpenRouterTour()

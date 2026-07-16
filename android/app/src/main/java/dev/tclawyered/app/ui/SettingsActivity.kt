@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import dev.tclawyered.app.data.ProviderState
 import dev.tclawyered.app.data.SettingsRepository
 import dev.tclawyered.app.llm.LlmClient
+import dev.tclawyered.app.ui.theme.TcTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -49,7 +51,7 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            TcTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SettingsScreen(repo, llm)
                 }
@@ -69,6 +71,7 @@ private fun SettingsScreen(repo: SettingsRepository, llm: LlmClient) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

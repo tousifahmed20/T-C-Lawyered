@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -26,6 +27,7 @@ import dev.tclawyered.app.data.local.LocalStore
 import dev.tclawyered.app.data.local.SnapshotEntity
 import dev.tclawyered.app.model.PolicyType
 import dev.tclawyered.app.model.Summary
+import dev.tclawyered.app.ui.theme.TcTheme
 import kotlinx.serialization.json.Json
 import java.text.DateFormat
 import java.util.Date
@@ -41,7 +43,7 @@ class HistoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            TcTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     HistoryScreen(store, json)
                 }
@@ -59,6 +61,7 @@ private fun HistoryScreen(store: LocalStore, json: Json) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

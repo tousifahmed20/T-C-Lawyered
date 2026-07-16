@@ -10,17 +10,26 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import dev.tclawyered.app.ui.theme.GoogleBlue
+import dev.tclawyered.app.ui.theme.GoogleGreen
+import dev.tclawyered.app.ui.theme.GoogleYellow
+import dev.tclawyered.app.ui.theme.GoogleDots
+import dev.tclawyered.app.ui.theme.TcButton
+import dev.tclawyered.app.ui.theme.TcTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,7 +88,7 @@ class MainActivity : ComponentActivity() {
         val openSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         setContent {
-            MaterialTheme {
+            TcTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val openHistory = { startActivity(Intent(this, HistoryActivity::class.java)) }
                     var urlToRead by remember { mutableStateOf<String?>(null) }
@@ -178,11 +187,13 @@ private fun SummarizeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("T&C Lawyered", style = MaterialTheme.typography.headlineSmall)
+        Text("T&C Lawyered", style = MaterialTheme.typography.headlineMedium)
+        GoogleDots()
         when (val r = result) {
             null -> Text(loadingText)
             is PipelineResult.Ready -> {
@@ -191,7 +202,7 @@ private fun SummarizeScreen(
             }
             is PipelineResult.NeedsProvider -> {
                 Text("Add an AI key to summarize new documents. OpenRouter gives you a free one — no card needed.")
-                Button(onClick = onOpenSettings) { Text("Open Settings") }
+                TcButton("Open Settings", onOpenSettings, Modifier.fillMaxWidth(), container = GoogleBlue)
             }
             is PipelineResult.Failed -> Text(humanizeError(r.message))
         }
@@ -228,50 +239,96 @@ private fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
 ) {
+    val ink = Color(0xFF1A1D24)
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("T&C Lawyered", style = MaterialTheme.typography.headlineSmall)
+        Text("T&C Lawyered", style = MaterialTheme.typography.headlineMedium)
+        GoogleDots()
         Text("You clicked agree. We actually read it.", style = MaterialTheme.typography.bodyMedium)
 
         if (sharedNote != null) {
             Text(sharedNote, style = MaterialTheme.typography.bodyLarge)
         }
 
-        // Paste-a-URL bar: read a policy page directly, no on-screen scrolling needed.
+        // Read a policy by link — no on-screen scrolling needed.
         var url by remember { mutableStateOf("") }
-        OutlinedTextField(
-            value = url,
-            onValueChange = { url = it },
-            label = { Text("Paste a Terms or Privacy Policy URL") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Button(
-            onClick = { if (url.isNotBlank()) onSubmitUrl(url) },
-            enabled = url.isNotBlank(),
-        ) {
-            Text("Read this URL")
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Read a policy by link", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("Paste a Terms or Privacy URL") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TcButton(
+                    text = "Read this URL",
+                    onClick = { if (url.isNotBlank()) onSubmitUrl(url) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = url.isNotBlank(),
+                    container = GoogleBlue,
+                    leading = "🔗",
+                )
+            }
         }
 
-        OpenRouterTour()
+        // Read whatever policy is on the screen right now.
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Read what's on your screen", style = MaterialTheme.typography.titleMedium)
+                TcButton(
+                    text = "Enable the reader bubble",
+                    onClick = onEnableBubble,
+                    modifier = Modifier.fillMaxWidth(),
+                    container = GoogleGreen,
+                    leading = "🫧",
+                )
+                TcButton(
+                    text = "Read the current screen",
+                    onClick = onStartCapture,
+                    modifier = Modifier.fillMaxWidth(),
+                    container = GoogleBlue,
+                    leading = "📷",
+                )
+            }
+        }
 
-        Button(onClick = onOpenSettings, modifier = Modifier.padding(top = 8.dp)) {
-            Text("Settings — add your AI key")
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) { OpenRouterTour() }
         }
-        Button(onClick = onEnableBubble) {
-            Text("Enable the floating reader bubble")
-        }
-        Button(onClick = onStartCapture) {
-            Text("Read the current screen (screen capture)")
-        }
-        Button(onClick = onOpenHistory) {
-            Text("History")
+
+        // Utility nav — two equal-width buttons, same 56dp height as the rest.
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TcButton(
+                text = "Settings",
+                onClick = onOpenSettings,
+                modifier = Modifier.weight(1f),
+                container = GoogleYellow,
+                content = ink,
+                leading = "⚙️",
+            )
+            TcButton(
+                text = "History",
+                onClick = onOpenHistory,
+                modifier = Modifier.weight(1f),
+                container = MaterialTheme.colorScheme.surfaceVariant,
+                content = MaterialTheme.colorScheme.onSurfaceVariant,
+                leading = "🕘",
+            )
         }
     }
 }

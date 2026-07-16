@@ -88,5 +88,10 @@
                 android:resource="@xml/accessibility_config" />
         </service>
 
+        <!-- Kill switch: the "Stop" action on the capture/bubble notifications. -->
+        <receiver
+            android:name=".control.StopReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

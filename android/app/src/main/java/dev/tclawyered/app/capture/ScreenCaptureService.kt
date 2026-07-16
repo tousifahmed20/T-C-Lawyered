@@ -53,6 +53,11 @@ class ScreenCaptureService : Service() {
             .setContentText(getString(R.string.capture_notification_text))
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setOngoing(true)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                getString(R.string.stop_action),
+                dev.tclawyered.app.control.StopReceiver.pendingIntent(this),
+            )
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)

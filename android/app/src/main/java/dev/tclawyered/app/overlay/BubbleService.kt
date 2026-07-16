@@ -228,6 +228,11 @@ class BubbleService : LifecycleService() {
             .setContentText(getString(R.string.bubble_notification_text))
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setOngoing(true)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                getString(R.string.stop_action),
+                dev.tclawyered.app.control.StopReceiver.pendingIntent(this),
+            )
             .build()
         startForeground(NOTIF_ID, notification)
     }

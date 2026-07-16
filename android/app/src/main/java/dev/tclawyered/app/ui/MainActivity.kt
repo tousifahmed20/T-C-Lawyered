@@ -23,11 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.Color
-import dev.tclawyered.app.ui.theme.GoogleBlue
-import dev.tclawyered.app.ui.theme.GoogleGreen
-import dev.tclawyered.app.ui.theme.GoogleYellow
-import dev.tclawyered.app.ui.theme.GoogleDots
 import dev.tclawyered.app.ui.theme.TcButton
 import dev.tclawyered.app.ui.theme.TcTheme
 import androidx.compose.runtime.Composable
@@ -193,7 +188,6 @@ private fun SummarizeScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("T&C Lawyered", style = MaterialTheme.typography.headlineMedium)
-        GoogleDots()
         when (val r = result) {
             null -> Text(loadingText)
             is PipelineResult.Ready -> {
@@ -202,7 +196,7 @@ private fun SummarizeScreen(
             }
             is PipelineResult.NeedsProvider -> {
                 Text("Add an AI key to summarize new documents. OpenRouter gives you a free one — no card needed.")
-                TcButton("Open Settings", onOpenSettings, Modifier.fillMaxWidth(), container = GoogleBlue)
+                TcButton("Open Settings", onOpenSettings, Modifier.fillMaxWidth())
             }
             is PipelineResult.Failed -> Text(humanizeError(r.message))
         }
@@ -239,7 +233,6 @@ private fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
 ) {
-    val ink = Color(0xFF1A1D24)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -249,7 +242,6 @@ private fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("T&C Lawyered", style = MaterialTheme.typography.headlineMedium)
-        GoogleDots()
         Text("You clicked agree. We actually read it.", style = MaterialTheme.typography.bodyMedium)
 
         if (sharedNote != null) {
@@ -277,7 +269,6 @@ private fun HomeScreen(
                     onClick = { if (url.isNotBlank()) onSubmitUrl(url) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = url.isNotBlank(),
-                    container = GoogleBlue,
                     leading = "🔗",
                 )
             }
@@ -294,14 +285,12 @@ private fun HomeScreen(
                     text = "Enable the reader bubble",
                     onClick = onEnableBubble,
                     modifier = Modifier.fillMaxWidth(),
-                    container = GoogleGreen,
                     leading = "🫧",
                 )
                 TcButton(
                     text = "Read the current screen",
                     onClick = onStartCapture,
                     modifier = Modifier.fillMaxWidth(),
-                    container = GoogleBlue,
                     leading = "📷",
                 )
             }
@@ -317,8 +306,8 @@ private fun HomeScreen(
                 text = "Settings",
                 onClick = onOpenSettings,
                 modifier = Modifier.weight(1f),
-                container = GoogleYellow,
-                content = ink,
+                container = MaterialTheme.colorScheme.surfaceVariant,
+                content = MaterialTheme.colorScheme.onSurfaceVariant,
                 leading = "⚙️",
             )
             TcButton(

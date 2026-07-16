@@ -7,8 +7,10 @@ import android.view.accessibility.AccessibilityEvent
 import dev.tclawyered.app.capture.CaptureSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -26,6 +28,7 @@ import kotlin.coroutines.resume
 class ScrollReaderService : AccessibilityService() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var readJob: Job? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -46,7 +49,8 @@ class ScrollReaderService : AccessibilityService() {
      * stitched text to [onDone] on the main thread. Requires an active capture session.
      */
     fun autoRead(onDone: (String) -> Unit) {
-        scope.launch {
+        readJob?.cancel()
+        readJob = scope.launch {
             CaptureSession.resetDocument()
             var lastCount = CaptureSession.captureFrame() // the frame already on screen
             var bottomHits = 0
@@ -64,8 +68,21 @@ class ScrollReaderService : AccessibilityService() {
                     break // 3 scrolls past the bottom with no new text → done
                 }
             }
+            // If the kill switch fired mid-scroll, don't surface a summary after the
+            // user asked us to stop. The suspend points above already abort the swipes;
+            // this guards the narrow window between the loop ending and onDone.
+            ensureActive()
             onDone(CaptureSession.assembledText())
         }
+    }
+
+    /** True while an auto-read is scrolling — used to make a bubble tap cancel it. */
+    val isReading: Boolean get() = readJob?.isActive == true
+
+    /** Kill switch: abort an in-flight auto-read so the synthetic swipes stop now. */
+    fun cancelRead() {
+        readJob?.cancel()
+        readJob = null
     }
 
     private suspend fun swipeUp() = suspendCancellableCoroutine<Unit> { cont ->

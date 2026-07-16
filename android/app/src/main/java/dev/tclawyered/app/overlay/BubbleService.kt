@@ -120,6 +120,15 @@ class BubbleService : LifecycleService() {
 
     /** Tap → auto-scroll + read the whole page (needs the accessibility service). */
     private fun onCapture() {
+        // Reachable stop: if a read is already scrolling, a tap cancels it. The bubble
+        // sits in the corner while the auto-scroll swipes down the centre, so — unlike
+        // the notification shade — it's never fought by those swipes.
+        ScrollReaderService.instance?.takeIf { it.isReading }?.let {
+            it.cancelRead()
+            SummaryOverlay.close()
+            toast("Reading stopped.")
+            return
+        }
         if (!CaptureSession.isActive) {
             toast("Start \"Read the current screen\" in the app first.")
             return

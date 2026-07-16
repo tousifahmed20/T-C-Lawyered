@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import dev.tclawyered.app.accessibility.ScrollReaderService
 import dev.tclawyered.app.capture.ScreenCaptureService
 import dev.tclawyered.app.overlay.BubbleService
 import dev.tclawyered.app.overlay.SummaryOverlay
@@ -22,8 +23,11 @@ class StopReceiver : BroadcastReceiver() {
     companion object {
         private const val ACTION_STOP = "dev.tclawyered.app.action.STOP_ALL"
 
-        /** The one kill switch: drop the overlay, the bubble, and screen capture. */
+        /** The one kill switch: abort any in-flight auto-read, then drop the overlay,
+         *  the bubble, and screen capture. Cancelling the read first stops the
+         *  synthetic swipes and prevents a summary from surfacing after Stop. */
         fun stopAll(context: Context) {
+            ScrollReaderService.instance?.cancelRead()
             SummaryOverlay.close()
             BubbleService.stop(context)
             ScreenCaptureService.stop(context)

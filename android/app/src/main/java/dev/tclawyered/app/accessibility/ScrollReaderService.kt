@@ -48,18 +48,20 @@ class ScrollReaderService : AccessibilityService() {
     fun autoRead(onDone: (String) -> Unit) {
         scope.launch {
             CaptureSession.resetDocument()
-            CaptureSession.captureFrame() // the frame already on screen
-            var lastCount = -1
-            var stable = 0
+            var lastCount = CaptureSession.captureFrame() // the frame already on screen
+            var bottomHits = 0
             for (i in 0 until MAX_SCROLLS) {
                 swipeUp()
                 delay(SETTLE_MS)
                 val count = CaptureSession.captureFrame()
-                if (count <= lastCount) {
-                    if (++stable >= STABLE_LIMIT) break // no new text twice → bottom reached
-                } else {
-                    stable = 0
+                // T&C pages aren't infinite-scroll, so once the text stops growing we're
+                // at the end. Confirm with 3 quick scrolls (~2s total at this cadence);
+                // if any of them pulls in new text we weren't at the bottom after all.
+                if (count > lastCount) {
                     lastCount = count
+                    bottomHits = 0
+                } else if (++bottomHits >= BOTTOM_CONFIRM_SCROLLS) {
+                    break // 3 scrolls past the bottom with no new text → done
                 }
             }
             onDone(CaptureSession.assembledText())
@@ -95,7 +97,7 @@ class ScrollReaderService : AccessibilityService() {
         fun isEnabled(): Boolean = instance != null
 
         private const val MAX_SCROLLS = 30
-        private const val STABLE_LIMIT = 2
+        private const val BOTTOM_CONFIRM_SCROLLS = 3 // ~2s of quick scrolls to confirm the bottom
         private const val SWIPE_MS = 250L
         private const val SETTLE_MS = 650L
     }

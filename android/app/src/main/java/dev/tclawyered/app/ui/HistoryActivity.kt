@@ -17,17 +17,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.tclawyered.app.data.SettingsRepository
 import dev.tclawyered.app.data.local.LocalStore
 import dev.tclawyered.app.data.local.SnapshotEntity
 import dev.tclawyered.app.model.PolicyType
 import dev.tclawyered.app.model.Summary
 import dev.tclawyered.app.ui.theme.TcTheme
+import dev.tclawyered.app.ui.theme.ThemeMode
 import kotlinx.serialization.json.Json
 import java.text.DateFormat
 import java.util.Date
@@ -38,12 +41,14 @@ import java.util.Date
  */
 class HistoryActivity : ComponentActivity() {
     private val store by lazy { LocalStore(applicationContext) }
+    private val settings by lazy { SettingsRepository(applicationContext) }
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TcTheme {
+            val themeMode by settings.themeMode().collectAsState(initial = "system")
+            TcTheme(ThemeMode.from(themeMode)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     HistoryScreen(store, json)
                 }

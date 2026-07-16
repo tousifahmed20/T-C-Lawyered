@@ -14,19 +14,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import dev.tclawyered.app.ui.theme.TcButton
 import dev.tclawyered.app.ui.theme.TcTheme
+import dev.tclawyered.app.ui.theme.ThemeMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,7 +88,8 @@ class MainActivity : ComponentActivity() {
         val openSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         setContent {
-            TcTheme {
+            val themeMode by settings.themeMode().collectAsState(initial = "system")
+            TcTheme(ThemeMode.from(themeMode)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val openHistory = { startActivity(Intent(this, HistoryActivity::class.java)) }
                     var urlToRead by remember { mutableStateOf<String?>(null) }
@@ -126,6 +132,7 @@ class MainActivity : ComponentActivity() {
                             onSubmitUrl = { urlToRead = normalizeUrl(it) },
                             onEnableBubble = ::enableBubble,
                             onStartCapture = ::requestCapture,
+                            onStopReader = { dev.tclawyered.app.control.StopReceiver.stopAll(this) },
                             onOpenSettings = openSettings,
                             onOpenHistory = openHistory,
                         )
@@ -171,9 +178,14 @@ private fun SummarizeScreen(
 ) {
     // null = still running; otherwise the pipeline outcome.
     var result by remember { mutableStateOf<PipelineResult?>(null) }
-    LaunchedEffect(Unit) {
+    // Cache the loaded input so "Summarize anyway" re-runs without re-fetching.
+    var loaded by remember { mutableStateOf<PolicyInput?>(null) }
+    var force by remember { mutableStateOf(false) }
+    LaunchedEffect(force) {
+        result = null
         result = try {
-            pipeline.run(loadInput())
+            val input = loaded ?: loadInput().also { loaded = it }
+            pipeline.run(input.copy(force = force))
         } catch (e: Exception) {
             PipelineResult.Failed(e.message ?: "Something went wrong.")
         }
@@ -189,7 +201,13 @@ private fun SummarizeScreen(
     ) {
         Text("T&C Lawyered", style = MaterialTheme.typography.headlineMedium)
         when (val r = result) {
-            null -> Text(loadingText)
+            null -> Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text(loadingText)
+            }
             is PipelineResult.Ready -> {
                 SummaryView(r.summary, r.source, r.scannedAt)
                 DataSafetyView(r.domain)
@@ -197,6 +215,17 @@ private fun SummarizeScreen(
             is PipelineResult.NeedsProvider -> {
                 Text("Add an AI key to summarize new documents. OpenRouter gives you a free one — no card needed.")
                 TcButton("Open Settings", onOpenSettings, Modifier.fillMaxWidth())
+            }
+            is PipelineResult.NotApplicable -> {
+                Text(
+                    "This doesn't look like a privacy policy, terms, or a legal or financial " +
+                        "document — so there's nothing to summarize.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                if (r.check.reason.isNotBlank()) {
+                    Text(r.check.reason, style = MaterialTheme.typography.bodySmall)
+                }
+                TcButton("Summarize anyway", { force = true }, Modifier.fillMaxWidth())
             }
             is PipelineResult.Failed -> Text(humanizeError(r.message))
         }
@@ -230,6 +259,7 @@ private fun HomeScreen(
     onSubmitUrl: (String) -> Unit,
     onEnableBubble: () -> Unit,
     onStartCapture: () -> Unit,
+    onStopReader: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
 ) {
@@ -269,7 +299,6 @@ private fun HomeScreen(
                     onClick = { if (url.isNotBlank()) onSubmitUrl(url) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = url.isNotBlank(),
-                    leading = "🔗",
                 )
             }
         }
@@ -285,13 +314,20 @@ private fun HomeScreen(
                     text = "Enable the reader bubble",
                     onClick = onEnableBubble,
                     modifier = Modifier.fillMaxWidth(),
-                    leading = "🫧",
                 )
                 TcButton(
                     text = "Read the current screen",
                     onClick = onStartCapture,
                     modifier = Modifier.fillMaxWidth(),
-                    leading = "📷",
+                )
+                // The off switch (also on the notification's Stop action): drops the
+                // bubble, screen capture, any in-progress read, and the overlay.
+                TcButton(
+                    text = "Stop the reader",
+                    onClick = onStopReader,
+                    modifier = Modifier.fillMaxWidth(),
+                    container = MaterialTheme.colorScheme.surfaceVariant,
+                    content = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -308,7 +344,6 @@ private fun HomeScreen(
                 modifier = Modifier.weight(1f),
                 container = MaterialTheme.colorScheme.surfaceVariant,
                 content = MaterialTheme.colorScheme.onSurfaceVariant,
-                leading = "⚙️",
             )
             TcButton(
                 text = "History",
@@ -316,7 +351,6 @@ private fun HomeScreen(
                 modifier = Modifier.weight(1f),
                 container = MaterialTheme.colorScheme.surfaceVariant,
                 content = MaterialTheme.colorScheme.onSurfaceVariant,
-                leading = "🕘",
             )
         }
     }
@@ -329,19 +363,19 @@ private fun OpenRouterTour() {
         Text("🆓 Free setup — no credit card needed", style = MaterialTheme.typography.titleMedium)
         Text(
             "T&C Lawyered runs on your OWN AI key, so nothing is billed to us — and you don't " +
-                "have to pay either. OpenRouter gives you a free key with capable :free models.",
+                "have to pay either. OpenRouter gives you a free key with capable free models.",
             style = MaterialTheme.typography.bodyMedium,
         )
         val steps = listOf(
             "1. Sign up at openrouter.ai (Google or GitHub — free, no card).",
             "2. Open openrouter.ai/settings/keys and create a key (starts with sk-or-).",
-            "3. Paste it in Settings, pick a :free model.",
+            "3. Paste it in Settings, pick a model whose name ends in \":free\".",
             "4. Save, then Test to confirm it works.",
             "5. You're set — share a policy or tap the bubble to summarize.",
         )
         steps.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
         Text(
-            ":free models cost \$0 (rate-limited). Prefer Anthropic, OpenAI, or Gemini? " +
+            "Free models cost \$0 (rate-limited). Prefer Anthropic, OpenAI, or Gemini? " +
                 "Add any of them in Settings instead.",
             style = MaterialTheme.typography.bodySmall,
         )

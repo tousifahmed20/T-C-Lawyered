@@ -25,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,7 +37,10 @@ import androidx.compose.ui.unit.dp
 import dev.tclawyered.app.data.ProviderState
 import dev.tclawyered.app.data.SettingsRepository
 import dev.tclawyered.app.llm.LlmClient
+import dev.tclawyered.app.ui.theme.TcButton
 import dev.tclawyered.app.ui.theme.TcTheme
+import dev.tclawyered.app.ui.theme.ThemeMode
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
@@ -51,7 +55,8 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TcTheme {
+            val themeMode by repo.themeMode().collectAsState(initial = "system")
+            TcTheme(ThemeMode.from(themeMode)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SettingsScreen(repo, llm)
                 }
@@ -83,6 +88,8 @@ private fun SettingsScreen(repo: SettingsRepository, llm: LlmClient) {
             style = MaterialTheme.typography.bodySmall,
         )
 
+        ThemeControl(repo, scope)
+
         states.forEach { state ->
             ProviderCard(
                 state = state,
@@ -102,6 +109,40 @@ private fun SettingsScreen(repo: SettingsRepository, llm: LlmClient) {
                     }
                 },
             )
+        }
+    }
+}
+
+/** Appearance picker (System / Light / Dark). Writes to DataStore; the whole app re-themes live. */
+@Composable
+private fun ThemeControl(repo: SettingsRepository, scope: CoroutineScope) {
+    val mode by repo.themeMode().collectAsState(initial = "system")
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Appearance", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("system" to "Auto", "light" to "Light", "dark" to "Dark").forEach { (value, label) ->
+                    val selected = mode == value
+                    TcButton(
+                        text = label,
+                        onClick = { scope.launch { repo.setThemeMode(value) } },
+                        modifier = Modifier.weight(1f),
+                        container = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        content = if (selected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
         }
     }
 }

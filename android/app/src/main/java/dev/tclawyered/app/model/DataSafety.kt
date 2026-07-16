@@ -15,11 +15,11 @@ data class Breach(
     @SerialName("IsVerified") val verified: Boolean = false,
 )
 
-/** An AI-reported fine/breach/controversy — UNVERIFIED, labelled as such in UI. */
+/** An AI-reported fine/breach/lawsuit/controversy — UNVERIFIED, labelled as such in UI. */
 @Serializable
 data class ReportedAction(
     val year: String = "",
-    val type: String = "controversy", // breach | fine | controversy
+    val type: String = "controversy", // breach | fine | lawsuit | controversy
     val summary: String = "",
     val confidence: Int = 0,
 )

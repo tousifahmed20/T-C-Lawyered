@@ -1,5 +1,6 @@
 package dev.tclawyered.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import dev.tclawyered.app.audio.Tts
 import dev.tclawyered.app.core.Constants
 import dev.tclawyered.app.model.Summary
+import dev.tclawyered.app.pipeline.Validator
 import java.text.DateFormat
 import java.util.Date
 
@@ -35,6 +37,38 @@ fun SummaryView(summary: Summary, source: String, scannedAt: Long) {
     DisposableEffect(Unit) { onDispose { tts.shutdown() } }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Responsibility: if the document doesn't pass the authenticity gate, say
+        // so loudly at the top — the structured summary below can otherwise read
+        // as an authoritative policy even when the source isn't one.
+        summary.genuineCheck?.let { gc ->
+            if (!Validator.passesUploadGate(gc)) {
+                val warn = Color(Constants.SeverityColors.HIGH)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.dp, warn),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            "This may not be a genuine policy",
+                            color = warn,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            "Authenticity ${gc.confidence}% — the summary below may be " +
+                                "unreliable. Double-check against the original document.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        if (gc.reason.isNotBlank()) {
+                            Text(gc.reason, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = {
                 val spoken = buildString {

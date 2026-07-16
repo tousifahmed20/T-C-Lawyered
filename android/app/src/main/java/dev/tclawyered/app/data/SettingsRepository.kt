@@ -8,7 +8,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.tclawyered.app.crypto.KeyVault
 import dev.tclawyered.app.llm.LlmConfig
 import dev.tclawyered.app.llm.Provider
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "tc_lawyered_settings")
 
@@ -86,11 +88,18 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[AUTO_SCROLL_ACK] = value }
     }
 
+    /** Theme preference as a reactive stream so the UI re-themes the moment it changes. */
+    fun themeMode(): Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "system" }
+    suspend fun setThemeMode(value: String) {
+        context.dataStore.edit { it[THEME_MODE] = value }
+    }
+
     companion object {
         private val ACTIVE = stringPreferencesKey("active_provider")
         private val HIVE_ENABLED = booleanPreferencesKey("hive_enabled")
         private val AUTO_SUMMARIZE = booleanPreferencesKey("auto_summarize")
         private val AUTO_SCROLL_ACK = booleanPreferencesKey("auto_scroll_ack")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 }
 

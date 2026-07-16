@@ -16,6 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 // Monochrome, adaptive: black-on-white in light, white-on-black in dark.
+// surfaceContainer* are set explicitly so Cards get a defined step off the
+// background — M3 resolves filled Card containers against these roles, and
+// without them the card boundary collapses (especially in light mode).
 private val Light = lightColorScheme(
     primary = Color(0xFF000000),
     onPrimary = Color(0xFFFFFFFF),
@@ -25,6 +28,11 @@ private val Light = lightColorScheme(
     onSurface = Color(0xFF000000),
     surfaceVariant = Color(0xFFEDEDED),
     onSurfaceVariant = Color(0xFF1A1A1A),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF5F5F5),
+    surfaceContainer = Color(0xFFF0F0F0),
+    surfaceContainerHigh = Color(0xFFEAEAEA),
+    surfaceContainerHighest = Color(0xFFE4E4E4),
     outline = Color(0xFFBDBDBD),
 )
 
@@ -37,13 +45,38 @@ private val Dark = darkColorScheme(
     onSurface = Color(0xFFFFFFFF),
     surfaceVariant = Color(0xFF1C1C1C),
     onSurfaceVariant = Color(0xFFE6E6E6),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF141414),
+    surfaceContainer = Color(0xFF1A1A1A),
+    surfaceContainerHigh = Color(0xFF242424),
+    surfaceContainerHighest = Color(0xFF2E2E2E),
     outline = Color(0xFF5A5A5A),
 )
 
+/** User's theme preference. SYSTEM follows the OS; LIGHT/DARK force one. */
+enum class ThemeMode {
+    SYSTEM, LIGHT, DARK;
+
+    companion object {
+        fun from(value: String?): ThemeMode = when (value) {
+            "light" -> LIGHT
+            "dark" -> DARK
+            else -> SYSTEM
+        }
+    }
+
+    val wire: String get() = name.lowercase()
+}
+
 @Composable
-fun TcTheme(content: @Composable () -> Unit) {
+fun TcTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
+    val dark = when (mode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) Dark else Light,
+        colorScheme = if (dark) Dark else Light,
         content = content,
     )
 }
@@ -61,7 +94,6 @@ fun TcButton(
     enabled: Boolean = true,
     container: Color? = null,
     content: Color? = null,
-    leading: String? = null,
 ) {
     val colors: ButtonColors = if (container != null) {
         ButtonDefaults.buttonColors(
@@ -78,9 +110,6 @@ fun TcButton(
         shape = RoundedCornerShape(14.dp),
         modifier = modifier.height(56.dp),
     ) {
-        Text(
-            text = if (leading != null) "$leading  $text" else text,
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Text(text = text, style = MaterialTheme.typography.titleMedium)
     }
 }

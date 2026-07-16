@@ -49,7 +49,13 @@ object SummaryMapper {
         genuine = (obj["genuine"] as? JsonPrimitive)?.booleanOrNull ?: false,
         confidence = clampConfidence((obj["confidence"] as? JsonPrimitive)?.intOrNull ?: 0),
         reason = str(obj["reason"]).ifEmpty { "No reason provided." },
+        docType = docType(obj["docType"]),
     )
+
+    private fun docType(el: kotlinx.serialization.json.JsonElement?): String {
+        val raw = str(el).lowercase()
+        return if (raw in GenuineCheck.SUMMARIZABLE_TYPES) raw else "other"
+    }
 
     /** Section-summary result {summary, points} for the chunked path. */
     fun section(obj: JsonObject): Pair<String, List<String>> =

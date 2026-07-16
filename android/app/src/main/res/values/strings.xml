@@ -11,7 +11,7 @@
 
     <string name="bubble_channel_name">Policy reader bubble</string>
     <string name="bubble_notification_title">T&amp;C Lawyered is ready</string>
-    <string name="bubble_notification_text">Tap the bubble on a Terms or Privacy screen to summarize it.</string>
+    <string name="bubble_notification_text">Tap the bubble on a Terms or Privacy screen to summarize it. Tap Stop to turn the reader off.</string>
 
     <string name="stop_action">Stop</string>
 

@@ -43,7 +43,17 @@ data class GenuineCheck(
     val genuine: Boolean = false,
     val confidence: Int = 0,
     val reason: String = "",
-)
+    // privacy | terms | legal | financial | other. Old stored summaries lack this
+    // and default to "other" — harmless, since the block gate only runs on fresh docs.
+    val docType: String = "other",
+) {
+    /** Document categories we actually summarize; anything else is blocked (with override). */
+    val summarizable: Boolean get() = docType in SUMMARIZABLE_TYPES
+
+    companion object {
+        val SUMMARIZABLE_TYPES = setOf("privacy", "terms", "legal", "financial")
+    }
+}
 
 enum class Severity(@SerialName("wire") val wire: String) {
     NONE("none"), LOW("low"), MEDIUM("medium"), HIGH("high");

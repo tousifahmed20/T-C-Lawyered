@@ -13,17 +13,26 @@ data class Prompt(val system: String, val user: String)
 object Prompts {
 
     fun authenticity(currentUrl: String, textExcerpt: String) = Prompt(
-        system = "You are a document authenticity checker for a browser extension. " +
+        system = "You are a document classifier and authenticity checker for a browser extension. " +
             "Respond ONLY in valid JSON. No preamble. No explanation outside JSON.",
         user = "URL: $currentUrl\n" +
             "Document excerpt (first ${Constants.Tokens.VALIDATION_EXCERPT} tokens): $textExcerpt\n\n" +
-            "Does this appear to be a genuine privacy policy or terms of service " +
-            "document for the domain in the URL?\n\n" +
-            "Check for:\n" +
-            "- Brand/company name in text matches or relates to the domain\n" +
-            "- Coherent legal language and document structure\n" +
-            "- Not a cookie consent banner, advertisement, or unrelated content\n\n" +
-            "Respond: { \"genuine\": boolean, \"confidence\": 0-100, \"reason\": \"string\" }",
+            "Classify this document, then judge whether it is a genuine document of that type.\n\n" +
+            "docType is exactly one of:\n" +
+            "- \"privacy\": a privacy policy, privacy notice, or data-protection policy\n" +
+            "- \"terms\": terms of service, terms & conditions, EULA, or user agreement\n" +
+            "- \"legal\": another binding legal agreement (cookie policy, acceptable-use policy, licence, contract)\n" +
+            "- \"financial\": a financial agreement or disclosure (loan/credit terms, fee schedule, banking or " +
+            "payment agreement, insurance policy)\n" +
+            "- \"other\": anything else — news article, blog post, product page, advertisement, cookie consent " +
+            "banner, marketing copy, or unrelated content\n\n" +
+            "Judge genuineness:\n" +
+            "- Brand/company name in the text relates to the domain in the URL\n" +
+            "- Coherent legal/contractual language and structure\n" +
+            "Set genuine=true only when it is a real document of the chosen type AND docType is not \"other\".\n" +
+            "confidence is 0-100 for how sure you are of the classification.\n\n" +
+            "Respond: { \"docType\": \"privacy|terms|legal|financial|other\", \"genuine\": boolean, " +
+            "\"confidence\": 0-100, \"reason\": \"string\" }",
     )
 
     fun sectionSummary(chunkText: String, sectionIndex: Int, totalSections: Int) = Prompt(
@@ -74,26 +83,46 @@ object Prompts {
     /** AI-reported data-safety track record for a company (port of trackRecordPrompt). */
     fun trackRecord(domain: String) = Prompt(
         system = "You report ONLY publicly documented data breaches, privacy/data-protection " +
-            "regulatory fines, and major privacy controversies for the company that operates " +
-            "a given domain. Include an item ONLY if you are highly confident it genuinely " +
-            "happened and was widely publicly reported. Never invent, guess, or infer. When " +
-            "in doubt, omit it. Respond ONLY in valid JSON.",
+            "regulatory fines, privacy or data-related lawsuits (ongoing or settled), and major " +
+            "privacy controversies for the company that operates a given domain. Include an item " +
+            "ONLY if you are highly confident it genuinely happened and was widely publicly " +
+            "reported. Never invent, guess, or infer. When in doubt, omit it. Respond ONLY in valid JSON.",
         user = "Company domain: $domain\n\n" +
             "List notable, publicly reported privacy or data-protection events for the company " +
-            "operating this domain: data breaches, regulatory fines (e.g. GDPR, FTC), or major " +
+            "operating this domain: data breaches, regulatory fines (e.g. GDPR, FTC), privacy or " +
+            "data-related lawsuits (class actions, litigation — ongoing or settled), or major " +
             "privacy controversies.\n\n" +
-            "For each item give: year (YYYY), type (\"breach\" | \"fine\" | \"controversy\"), a " +
-            "one-sentence factual summary, and your confidence (0-100) that it really happened.\n" +
+            "For each item give: year (YYYY), type (\"breach\" | \"fine\" | \"lawsuit\" | " +
+            "\"controversy\"), a one-sentence factual summary, and your confidence (0-100) that it " +
+            "really happened.\n" +
             "Only include items you are confident about. If you are not confident about any, " +
             "return an empty array. Do NOT fabricate or pad the list.\n\n" +
-            "Respond: { \"actions\": [ { \"year\": \"YYYY\", \"type\": \"breach|fine|controversy\", " +
+            "Respond: { \"actions\": [ { \"year\": \"YYYY\", \"type\": \"breach|fine|lawsuit|controversy\", " +
             "\"summary\": \"string\", \"confidence\": 0-100 } ] }",
     )
 
     data class SectionResult(val summary: String, val points: List<String>)
 
+    /**
+     * Tone guidance shared by every summary prompt (#5): plain language, calm and
+     * proportionate — inform, don't alarm. Prepended to the schema instruction.
+     */
+    private val TONE =
+        "Write for an ordinary person with no legal background — use plain, everyday " +
+            "language at about an 8th-grade reading level, short sentences, no legal jargon " +
+            "(if a legal term is unavoidable, explain it in a few words).\n" +
+            "Be calm, factual, and proportionate. Inform, do not alarm. Do NOT use fear-mongering, " +
+            "alarmist wording, or scare tactics; do not exaggerate how bad something is. State what " +
+            "the document actually says and why it matters, in neutral terms. If a practice is " +
+            "standard and low-risk, say so plainly rather than making it sound sinister.\n" +
+            "Every example must be realistic and representative of normal use — a typical, likely " +
+            "scenario, never a far-fetched worst case, and never invented. Ground each example in " +
+            "what THIS document actually permits.\n\n"
+
+
     private val SUMMARY_SCHEMA_INSTRUCTION =
-        "Respond ONLY with valid JSON matching exactly this schema:\n" +
+        TONE +
+            "Respond ONLY with valid JSON matching exactly this schema:\n" +
             "{\n" +
             "  \"tldr\": \"2-3 sentence plain English summary\",\n" +
             "  \"keyRisks\": [\"string\"],\n" +

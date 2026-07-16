@@ -190,6 +190,11 @@ class BubbleService : LifecycleService() {
                     )
                 is PipelineResult.NeedsProvider ->
                     SummaryOverlay.showMessage(this@BubbleService, "Add an AI key in the app to summarize (OpenRouter gives a free one — no card).")
+                is PipelineResult.NotApplicable ->
+                    SummaryOverlay.showMessage(
+                        this@BubbleService,
+                        "This screen doesn't look like a policy, or a legal or financial document, so there's nothing to summarize.",
+                    )
                 is PipelineResult.Failed ->
                     SummaryOverlay.showMessage(this@BubbleService, humanize(result.message))
             }
@@ -216,11 +221,14 @@ class BubbleService : LifecycleService() {
 
     private fun startForegroundNotice() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // IMPORTANCE_LOW (not MIN) so the "Stop" action is actually visible in the
+        // shade — this is the user's off switch for the bubble. A fresh channel id
+        // is required because a channel's importance is locked after first creation.
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
                 getString(R.string.bubble_channel_name),
-                NotificationManager.IMPORTANCE_MIN,
+                NotificationManager.IMPORTANCE_LOW,
             ),
         )
         val notification: Notification = Notification.Builder(this, CHANNEL_ID)
@@ -249,7 +257,7 @@ class BubbleService : LifecycleService() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "bubble"
+        private const val CHANNEL_ID = "bubble_v2"
         private const val NOTIF_ID = 43
         private const val TAP_SLOP = 16f
         private const val LONG_PRESS_MS = 600L

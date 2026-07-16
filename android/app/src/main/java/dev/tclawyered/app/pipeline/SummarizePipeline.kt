@@ -8,6 +8,7 @@ import dev.tclawyered.app.data.hive.UploadRequest
 import dev.tclawyered.app.data.local.LocalStore
 import dev.tclawyered.app.data.safety.ReputationClient
 import dev.tclawyered.app.llm.LlmClient
+import dev.tclawyered.app.model.GenuineCheck
 import dev.tclawyered.app.model.PolicyType
 import dev.tclawyered.app.model.Severity
 import dev.tclawyered.app.model.Summary
@@ -34,6 +35,8 @@ sealed interface PipelineResult {
         val domain: String,
     ) : PipelineResult
     data object NeedsProvider : PipelineResult
+    /** Doc isn't a policy/legal/financial document — blocked, but the UI offers an override. */
+    data class NotApplicable(val check: GenuineCheck, val domain: String) : PipelineResult
     data class Failed(val message: String) : PipelineResult
 }
 
@@ -95,14 +98,22 @@ class SummarizePipeline(
         }
 
         return try {
-            // 4) Authenticity (gates hive upload, not local summarize).
+            // 4) Classify + authenticity. Gates hive upload, and — for a brand-new
+            //    document that isn't a policy/legal/financial doc — stops here instead
+            //    of inventing a summary. `force` is the user's "Summarize anyway".
             val genuine = validator.validate(input.url, text, config)
+            if (!input.force && existing == null && !genuine.summarizable) {
+                return PipelineResult.NotApplicable(genuine, domain)
+            }
 
             // 5) Summarize.
             val base = summarizer.summarize(text, domain, type, config)
 
-            // 6) Diff against the latest prior version, if any.
-            val prior = store.site(domain, type)
+            // 6) Diff against the latest prior version, if any. Skip entirely when
+            //    the domain is blank (share-text / OCR have no URL) — otherwise all
+            //    such docs share one site key and get spuriously diffed against each
+            //    other. History still keeps them via the content-hash snapshot below.
+            val prior = if (domain.isNotEmpty()) store.site(domain, type) else null
             var whatChanged: String? = null
             var changes: List<String> = emptyList()
             var severity = Severity.NONE
@@ -125,9 +136,10 @@ class SummarizePipeline(
                 genuineCheck = genuine,
             )
 
-            // 7) Persist locally (always) and update the latest pointer.
+            // 7) Persist locally (always) and update the latest pointer — but only
+            //    when we have a real domain to key it by (see step 6).
             store.putSnapshot(hash, domain, type, text, full, parentHash = prior?.hash)
-            store.putSite(domain, type, hash)
+            if (domain.isNotEmpty()) store.putSite(domain, type, hash)
 
             // 7b) We're already paying for an LLM call, so generate the reported
             //     track record now (cached per domain). Never on a cache/hive hit.

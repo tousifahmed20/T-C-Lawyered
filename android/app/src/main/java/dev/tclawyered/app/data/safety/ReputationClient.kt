@@ -85,6 +85,6 @@ class ReputationClient(context: Context, private val llm: LlmClient = LlmClient(
     private data class Cache(val map: Map<String, Entry> = emptyMap())
 
     companion object {
-        private val TYPES = setOf("breach", "fine", "controversy")
+        private val TYPES = setOf("breach", "fine", "lawsuit", "controversy")
     }
 }

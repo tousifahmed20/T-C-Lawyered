@@ -16,13 +16,18 @@ import dev.tclawyered.app.overlay.SummaryOverlay
  */
 class StopReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        SummaryOverlay.close()
-        BubbleService.stop(context)
-        ScreenCaptureService.stop(context)
+        stopAll(context)
     }
 
     companion object {
         private const val ACTION_STOP = "dev.tclawyered.app.action.STOP_ALL"
+
+        /** The one kill switch: drop the overlay, the bubble, and screen capture. */
+        fun stopAll(context: Context) {
+            SummaryOverlay.close()
+            BubbleService.stop(context)
+            ScreenCaptureService.stop(context)
+        }
 
         fun pendingIntent(context: Context): PendingIntent {
             val intent = Intent(context, StopReceiver::class.java).setAction(ACTION_STOP)

@@ -1,5 +1,7 @@
 package dev.tclawyered.app.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +22,7 @@ import dev.tclawyered.app.data.safety.BreachClient
 import dev.tclawyered.app.data.safety.ReputationClient
 import dev.tclawyered.app.model.Breach
 import dev.tclawyered.app.model.ReportedAction
+import dev.tclawyered.app.ui.theme.TcButton
 
 /**
  * Data-safety card (F-05 data-safety feature): known breaches from Have I Been
@@ -43,7 +46,7 @@ fun DataSafetyView(domain: String) {
         loaded = true
     }
 
-    if (!loaded || (breaches.isEmpty() && reported.isEmpty())) return
+    if (!loaded) return
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -62,7 +65,7 @@ fun DataSafetyView(domain: String) {
             }
 
             if (reported.isNotEmpty()) {
-                Text("Reported fines & controversies", style = MaterialTheme.typography.labelLarge)
+                Text("Reported fines, lawsuits & controversies", style = MaterialTheme.typography.labelLarge)
                 reported.forEach { a ->
                     Text("• ${a.year} ${a.type}: ${a.summary}")
                 }
@@ -71,6 +74,42 @@ fun DataSafetyView(domain: String) {
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+
+            if (breaches.isEmpty() && reported.isEmpty()) {
+                Text(
+                    "No breaches or fines found in our public sources.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
+            // Always offer a live check — lawsuits and recent events move faster than any cache.
+            TcButton(
+                text = "Search privacy news",
+                onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(newsSearchUrl(domain))),
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                container = MaterialTheme.colorScheme.surfaceVariant,
+                content = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Opens a Google News search for this company's privacy, data, and lawsuit history.",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
+}
+
+/**
+ * Google Search's News tab for the company's privacy/data/legal record. Using
+ * tbm=nws (not the news.google.com app deep link) keeps the full query — the app
+ * collapses it to just the company name. Only the domain leaves the device.
+ */
+private fun newsSearchUrl(domain: String): String {
+    val query = "\"$domain\" privacy data lawsuit"
+    return "https://www.google.com/search?tbm=nws&q=" + Uri.encode(query)
 }

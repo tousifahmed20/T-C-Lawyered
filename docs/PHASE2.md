@@ -226,12 +226,22 @@ Decision recorded as **deferred** — does not block writing the backend; revisi
 
 ---
 
-## 10. Phase 2.5 — Warm-up seeding (after backend is live)
+## 10. Launch strategy — free-first onboarding (replaces paid warm-up)
 
-Per CLAUDE.md Warm-Up Strategy: `scripts/warmup.js` + `data/top-1000-urls.json`,
-~$10–12 with Haiku / GPT-4o-mini, run Tier 1 → 2 → 3. Seeds the hive so launch-day
-users get instant, free hits on popular sites. Out of scope for the backend build
-itself; tracked as the next milestone.
+The original CLAUDE.md Warm-Up Strategy spent ~$10–12 of the maintainer's own money
+to pre-seed the hive. We're **not** doing that. Instead the hive fills itself,
+organically and for free, because every user runs on their **own** free AI key:
+
+- The extension ships an in-app **free-setup tour** (settings page + popup empty
+  state) that walks a new user through creating a free **OpenRouter** account and
+  pasting the key. OpenRouter's `:free` models cost the user $0 and cost us nothing.
+- Each genuine scan a user runs uploads its summary to the hive (authenticity-gated,
+  first-write-wins). So the community seeds the cache as it's used — no maintainer
+  spend, no scripted crawl.
+
+`scripts/warmup.js` + `data/top-1000-urls.json` remain **optional** for a maintainer
+who later wants to jump-start Tier 1 popular sites, but they are no longer required
+for launch and are deprioritised.
 
 ---
 

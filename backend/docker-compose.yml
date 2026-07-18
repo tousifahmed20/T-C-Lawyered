@@ -1,0 +1,23 @@
+# Low-friction local Postgres (PHASE2.md §7, §11 recommendation).
+#   docker compose up -d
+#   npm run migrate && npm run dev
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tclawyered
+      POSTGRES_PASSWORD: tclawyered
+      POSTGRES_DB: tclawyered
+    ports:
+      - '5432:5432'
+    volumes:
+      - tclawyered_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tclawyered']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  tclawyered_pgdata:

@@ -13,6 +13,39 @@
         <p class="sub">Your API key never leaves this browser except to the provider you choose.</p>
       </header>
 
+      <!-- Free setup tour (OpenRouter) -->
+      <section class="panel highlight" id="freeSetup">
+        <h2>🆓 Free setup — no credit card needed</h2>
+        <p class="hint">
+          T&amp;C Lawyered runs on <strong>your own</strong> AI key so nothing is ever billed to us,
+          and you don&rsquo;t need to spend anything either. <strong>OpenRouter</strong> gives you a
+          free key with access to capable <code>:free</code> models. Takes about two minutes:
+        </p>
+        <ol class="tour">
+          <li>
+            Go to
+            <a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>
+            and sign up (Google or GitHub — free, no card).
+          </li>
+          <li>
+            Open
+            <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">openrouter.ai/settings/keys</a>
+            and click <em>Create Key</em>. Copy the key (starts with <code>sk-or-</code>).
+          </li>
+          <li>Paste it into the <strong>openrouter</strong> card below and pick a <code>:free</code> model.</li>
+          <li>Click <em>Save</em>, then <em>Test</em> to confirm it works.</li>
+          <li>Click <em>Use this</em> to make OpenRouter your active provider. Done — start scanning policies.</li>
+        </ol>
+        <p class="hint">
+          <code>:free</code> models cost <strong>$0</strong> but are rate-limited and may change —
+          see <a href="https://openrouter.ai/models?max_price=0" target="_blank" rel="noopener">the current free list</a>.
+          Prefer another provider? Add Anthropic, OpenAI, or Gemini below instead.
+        </p>
+        <div class="actions">
+          <button id="jumpToProviders" class="primary" type="button">Set up OpenRouter now ↓</button>
+        </div>
+      </section>
+
       <!-- Providers -->
       <section class="panel">
         <h2>LLM Provider</h2>

@@ -4,7 +4,7 @@
  */
 
 /** Hive backend base URL. Override at build time if self-hosting. */
-export const HIVE_BASE_URL = 'https://api.tclawyered.dev';
+export const HIVE_BASE_URL = 'https://t-c-lawyered-production.up.railway.app';
 
 /** LLM provider API endpoints. User keys only — never our keys. */
 export const PROVIDER_ENDPOINTS = {

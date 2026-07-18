@@ -113,6 +113,11 @@ docs/        PHASE2.md — hive backend spec
 CLAUDE.md    Full project brief / spec
 ```
 
+The **native Android app** lives in its own repo:
+[tc-lawyered-android](https://github.com/tousifahmed20/tc-lawyered-android). It
+shares the same hive backend and keeps its core hashing/domain logic byte-for-byte
+in sync with `extension/` so cross-client cache hits work.
+
 ## Build from source
 
 ```bash
@@ -128,6 +133,8 @@ npm run dev   --workspace extension      # watch / rebuild on change
   policy is summarized once and reused by everyone, at zero API cost. Spec in
   [`docs/PHASE2.md`](docs/PHASE2.md).
 - **Phase 2.5 — Warm-up** Seed the hive with the top ~1000 sites.
+- **Android app** 📱 A native Kotlin/Compose client with the same mission, in its own
+  repo: [tc-lawyered-android](https://github.com/tousifahmed20/tc-lawyered-android).
 
 ## Tech
 
